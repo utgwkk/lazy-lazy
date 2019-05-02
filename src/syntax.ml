@@ -14,7 +14,7 @@ type exp =
   | ELet of id * exp * exp
   | EAbs of id * exp
   | EApp of exp * exp
-  | ELetRec of id * id * exp * exp
+  | ELetRec of id * exp * exp
 
 module Env = Map.Make(String)
 
@@ -37,5 +37,5 @@ let rec string_of_exp = function
       Printf.sprintf "(lambda %s %s)" x (string_of_exp e)
   | EApp (e1, e2) ->
       Printf.sprintf "(%s %s)" (string_of_exp e1) (string_of_exp e2)
-  | ELetRec (f, x, e1, e2) ->
-      Printf.sprintf "(let-rec %s %s %s)" x (string_of_exp (EAbs (x, e1))) (string_of_exp e2)
+  | ELetRec (f, e1, e2) ->
+      Printf.sprintf "(let-rec %s %s %s)" f (string_of_exp e1) (string_of_exp e2)

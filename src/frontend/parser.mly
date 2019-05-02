@@ -41,6 +41,6 @@ Expr :
   | Expr LT Expr { EBinOp (Lt, $1, $3) }
   | IF e1=Expr THEN e2=Expr ELSE e3=Expr %prec if_exp { EIfThenElse (e1, e2, e3) }
   | LET x=ID EQ e1=Expr IN e2=Expr %prec let_exp { ELet (x, e1, e2) }
-  | LET REC f=ID EQ FUN x=ID RARROW e1=Expr IN e2=Expr %prec let_exp { ELetRec (f, x, e1, e2) }
+  | LET REC f=ID EQ e1=Expr IN e2=Expr %prec let_exp { ELetRec (f, e1, e2) }
   | FUN x=ID RARROW e=Expr %prec fun_exp { EAbs (x, e) }
   | LPAREN Expr RPAREN { $2 }

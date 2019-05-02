@@ -58,8 +58,9 @@ let rec eval env exp k = match exp with
             | _ -> runtime_error "Not a function"
         )
       )
-  | ELetRec (f, x, e1, e2) ->
+  | ELetRec (f, EAbs (x, e1), e2) ->
       let envr = ref env in
       let env' = Env.add f (VProc (x, e1, envr)) env in
       envr := env';
       eval env' e2 (fun v2 -> k v2)
+  | ELetRec _ -> runtime_error "Recursive variable is not allowed in strict mode"
