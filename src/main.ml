@@ -13,13 +13,13 @@ let rec repl prompt chan k =
   let exp = Parser.main Lexer.main (Lexing.from_channel chan) in
   if_verbose (fun () -> print_endline (string_of_exp exp));
 
+  let initial_env = Env.empty in
+
   begin
     if !strict_eval then
-      let initial_env = Env.empty in
       let result = Eval.eval initial_env exp (fun x -> x) in
       print_endline (Eval.string_of_value result)
     else
-      let initial_env = Env.empty in
       let result = LazyEval.eval initial_env exp (fun t ->
         LazyEval.force t (fun v -> v)
       ) in
