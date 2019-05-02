@@ -12,6 +12,8 @@ type exp =
   | EBinOp of op * exp * exp
   | EIfThenElse of exp * exp * exp
 
+module Env = Map.Make(String)
+
 let string_of_op = function
   | Plus -> "+"
   | Mult -> "*"
