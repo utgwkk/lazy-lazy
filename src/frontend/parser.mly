@@ -6,6 +6,8 @@
 %token LPAREN RPAREN
 %token TRUE FALSE
 %token IF THEN ELSE
+%token LET IN
+%token EQ
 %token PLUS MULT LT
 
 %token <int> INTV
@@ -32,4 +34,5 @@ Expr :
   | Expr MULT Expr { EBinOp (Mult, $1, $3) }
   | Expr LT Expr { EBinOp (Lt, $1, $3) }
   | IF e1=Expr THEN e2=Expr ELSE e3=Expr { EIfThenElse (e1, e2, e3) }
+  | LET x=ID EQ e1=Expr IN e2=Expr { ELet (x, e1, e2) }
   | LPAREN Expr RPAREN { $2 }

@@ -39,3 +39,8 @@ let rec eval env exp k = match exp with
               else eval env e3 (fun v3 -> k v3)
           | _ -> runtime_error "Condition must be boolean"
       )
+  | ELet (x, e1, e2) ->
+      eval env e1 (fun v1 ->
+        let env' = Env.add x v1 env in
+        eval env' e2 (fun v2 -> k v2)
+      )

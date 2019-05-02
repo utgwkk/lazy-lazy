@@ -5,6 +5,8 @@
     ("else", ELSE);
     ("false", FALSE);
     ("if", IF);
+    ("in", IN);
+    ("let", LET);
     ("then", THEN);
     ("true", TRUE);
   ] |> List.sort compare
@@ -22,6 +24,7 @@ rule main = parse
   | "(" { LPAREN }
   | ")" { RPAREN }
   | ";;" { SEMISEMI }
+  | "=" { EQ }
   | "+" { PLUS }
   | "*" { MULT }
   | "<" { LT }

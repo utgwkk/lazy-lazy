@@ -11,6 +11,7 @@ type exp =
   | EBool of bool
   | EBinOp of op * exp * exp
   | EIfThenElse of exp * exp * exp
+  | ELet of id * exp * exp
 
 module Env = Map.Make(String)
 
@@ -27,3 +28,5 @@ let rec string_of_exp = function
       Printf.sprintf "(%s %s %s)" (string_of_op op) (string_of_exp e1) (string_of_exp e2)
   | EIfThenElse (e1, e2, e3) ->
       Printf.sprintf "(if %s %s %s)" (string_of_exp e1) (string_of_exp e2) (string_of_exp e3)
+  | ELet (x, e1, e2) ->
+      Printf.sprintf "(let %s %s %s)" x (string_of_exp e1) (string_of_exp e2)
