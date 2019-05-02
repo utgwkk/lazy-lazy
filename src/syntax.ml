@@ -12,6 +12,8 @@ type exp =
   | EBinOp of op * exp * exp
   | EIfThenElse of exp * exp * exp
   | ELet of id * exp * exp
+  | EAbs of id * exp
+  | EApp of exp * exp
 
 module Env = Map.Make(String)
 
@@ -30,3 +32,7 @@ let rec string_of_exp = function
       Printf.sprintf "(if %s %s %s)" (string_of_exp e1) (string_of_exp e2) (string_of_exp e3)
   | ELet (x, e1, e2) ->
       Printf.sprintf "(let %s %s %s)" x (string_of_exp e1) (string_of_exp e2)
+  | EAbs (x, e) ->
+      Printf.sprintf "(lambda %s %s)" x (string_of_exp e)
+  | EApp (e1, e2) ->
+      Printf.sprintf "(%s %s)" (string_of_exp e1) (string_of_exp e2)

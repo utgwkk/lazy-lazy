@@ -8,6 +8,8 @@
 %token IF THEN ELSE
 %token LET IN
 %token EQ
+%token FUN
+%token RARROW
 %token PLUS MULT LT
 
 %token <int> INTV
@@ -16,6 +18,8 @@
 %left LT
 %left PLUS
 %left MULT
+%left application
+%nonassoc RARROW
 %nonassoc ELSE
 
 %start main
@@ -30,9 +34,11 @@ Expr :
   | INTV { EInt $1 }
   | TRUE { EBool true }
   | FALSE { EBool false }
+  | Expr Expr %prec application { EApp ($1, $2) }
   | Expr PLUS Expr { EBinOp (Plus, $1, $3) }
   | Expr MULT Expr { EBinOp (Mult, $1, $3) }
   | Expr LT Expr { EBinOp (Lt, $1, $3) }
   | IF e1=Expr THEN e2=Expr ELSE e3=Expr { EIfThenElse (e1, e2, e3) }
   | LET x=ID EQ e1=Expr IN e2=Expr { ELet (x, e1, e2) }
+  | FUN x=ID RARROW e=Expr { EAbs (x, e) }
   | LPAREN Expr RPAREN { $2 }

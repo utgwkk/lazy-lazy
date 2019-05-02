@@ -4,6 +4,7 @@
   let reservedWords = [
     ("else", ELSE);
     ("false", FALSE);
+    ("fun", FUN);
     ("if", IF);
     ("in", IN);
     ("let", LET);
@@ -24,6 +25,7 @@ rule main = parse
   | "(" { LPAREN }
   | ")" { RPAREN }
   | ";;" { SEMISEMI }
+  | "->" { RARROW }
   | "=" { EQ }
   | "+" { PLUS }
   | "*" { MULT }
