@@ -19,9 +19,9 @@ let rec repl prompt chan k =
       let result = Eval.eval initial_env exp (fun x -> x) in
       print_endline (Eval.string_of_value result)
     else
-      let initial_env_ref = ref Env.empty in
-      let result = LazyEval.eval !initial_env_ref exp (fun t ->
-        LazyEval.force initial_env_ref t (fun v -> v)
+      let initial_env = Env.empty in
+      let result = LazyEval.eval initial_env exp (fun t ->
+        LazyEval.force t (fun v -> v)
       ) in
       print_endline (LazyEval.string_of_value result)
   end;

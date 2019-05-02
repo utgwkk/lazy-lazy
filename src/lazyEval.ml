@@ -20,12 +20,12 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | (Lt, VInt i1, VInt i2) -> k (VBool (i1 < i2))
   | _ -> runtime_error "binop"
 
-let rec force env t (k : value -> 'a) = match t with
+let rec force t (k : value -> 'a) = match t with
   | Promise (e, env) ->
       begin match e with
       | EVar x ->
           begin match Env.find_opt x !env with
-            | Some t -> force env t (fun v -> k v)
+            | Some t -> force t (fun v -> k v)
             | None -> runtime_error ("Variable " ^ x ^ " is not bounded")
           end
       | EInt i -> k (VInt i)
@@ -37,8 +37,8 @@ let rec force env t (k : value -> 'a) = match t with
               match op with
                 | Cons -> k (VCons (t1, t2))
                 | _ ->
-                    force env t1 (fun v1 ->
-                      force env t2 (fun v2 ->
+                    force t1 (fun v1 ->
+                      force t2 (fun v2 ->
                         eval_binop op v1 v2 k
                       )
                     )
@@ -46,15 +46,15 @@ let rec force env t (k : value -> 'a) = match t with
           )
       | EIfThenElse (e1, e2, e3) ->
           eval !env e1 (fun t1 ->
-            force env t1 (fun v1 ->
+            force t1 (fun v1 ->
               match v1 with
                 | VBool true ->
                     eval !env e2 (fun t2 ->
-                      force env t2 (fun v2 -> k v2)
+                      force t2 (fun v2 -> k v2)
                     )
                 | VBool false ->
                     eval !env e3 (fun t3 ->
-                      force env t3 (fun v3 -> k v3)
+                      force t3 (fun v3 -> k v3)
                     )
                 | _ -> runtime_error "Condition must be boolean."
             )
@@ -63,18 +63,18 @@ let rec force env t (k : value -> 'a) = match t with
           eval !env e1 (fun t1 ->
             let env' = ref (Env.add x t1 !env) in
             eval !env' e2 (fun t2 ->
-              force env' t2 (fun v2 -> k v2)
+              force t2 (fun v2 -> k v2)
             )
           )
       | EAbs (x, e) -> k (VProc (x, e, env))
       | EApp (e1, e2) ->
           eval !env e1 (fun t1 ->
-            force env t1 (function
+            force t1 (function
               | VProc (x, e, envr) ->
                   eval !env e2 (fun t2 ->
                     let env' = ref (Env.add x t2 !envr) in
                     eval !env' e (fun t ->
-                      force env' t (fun v -> k v)
+                      force t (fun v -> k v)
                     )
                   )
               | _ -> runtime_error "Not a function."
@@ -86,15 +86,15 @@ let rec force env t (k : value -> 'a) = match t with
             let env' = Env.add f t1 !env in
             envr := env';
             eval env' e2 (fun t2 ->
-              force envr t2 (fun v2 -> k v2)
+              force t2 (fun v2 -> k v2)
             )
           )
       | EMatchWith (e1, enil, xcar, xcdr, econs) ->
           eval !env e1 (fun t1 ->
-            force env t1 (function
+            force t1 (function
               | VNil ->
                   eval !env enil (fun tnil ->
-                    force env tnil (fun vnil -> k vnil)
+                    force tnil (fun vnil -> k vnil)
                   )
               | VCons (tcar, tcdr) ->
                   let env' =
@@ -104,7 +104,7 @@ let rec force env t (k : value -> 'a) = match t with
                     |> ref
                   in
                   eval !env' econs (fun tcons ->
-                    force env' tcons (fun vcons -> k vcons)
+                    force tcons (fun vcons -> k vcons)
                   )
               | _ -> runtime_error "Not a list."
             )
@@ -149,8 +149,8 @@ let rec string_of_value = function
   | VProc (x, e, _) -> string_of_exp (EAbs (x, e))
   | VNil -> "[]"
   | VCons (t1, t2) ->
-      force (ref Env.empty) t1 (fun v1 ->
-        force (ref Env.empty) t2 (fun v2 ->
+      force t1 (fun v1 ->
+        force t2 (fun v2 ->
           match v1 with
             | VCons _ ->
                 Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
