@@ -147,11 +147,15 @@ let rec string_of_value = function
   | VInt i -> string_of_int i
   | VBool b -> string_of_bool b
   | VProc (x, e, _) -> string_of_exp (EAbs (x, e))
-  | VNil -> "()"
+  | VNil -> "[]"
   | VCons (t1, t2) ->
       force (ref Env.empty) t1 (fun v1 ->
         force (ref Env.empty) t2 (fun v2 ->
-          Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
+          match v1 with
+            | VCons _ ->
+                Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
+            | _ ->
+                Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
         )
       )
 
