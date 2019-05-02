@@ -25,3 +25,6 @@ setup.log
 ._d/
 ._bcdi/
 prog
+lexer.ml
+parser.ml
+parser.mli
