@@ -2,6 +2,7 @@ PACKS =
 OCAMLYACC = menhir
 SRCDIR = src
 SOURCES = $(addprefix $(SRCDIR)/, \
+					syntax.ml \
 					) \
 					$(MAIN)
 MAIN = $(SRCDIR)/main.ml
