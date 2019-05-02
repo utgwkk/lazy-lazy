@@ -6,6 +6,7 @@ SOURCES = $(addprefix $(SRCDIR)/, \
 					frontend/parser.mly \
 					frontend/lexer.mll \
 					eval.ml \
+					lazyEval.ml \
 					) \
 					$(MAIN)
 MAIN = $(SRCDIR)/main.ml
