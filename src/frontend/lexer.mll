@@ -8,9 +8,11 @@
     ("if", IF);
     ("in", IN);
     ("let", LET);
+    ("match", MATCH);
     ("rec", REC);
     ("then", THEN);
     ("true", TRUE);
+    ("with", WITH);
   ] |> List.sort compare
 }
 
@@ -27,6 +29,9 @@ rule main = parse
   | ")" { RPAREN }
   | ";;" { SEMISEMI }
   | "->" { RARROW }
+  | "[]" { NIL }
+  | "::" { CONS }
+  | "|" { PIPE }
   | "=" { EQ }
   | "+" { PLUS }
   | "*" { MULT }

@@ -4,17 +4,20 @@ type op =
   | Plus
   | Mult
   | Lt
+  | Cons
 
 type exp =
   | EVar of id
   | EInt of int
   | EBool of bool
+  | ENil
   | EBinOp of op * exp * exp
   | EIfThenElse of exp * exp * exp
   | ELet of id * exp * exp
   | EAbs of id * exp
   | EApp of exp * exp
   | ELetRec of id * exp * exp
+  | EMatchWith of exp * exp * id * id * exp
 
 module Env = Map.Make(String)
 
@@ -22,11 +25,13 @@ let string_of_op = function
   | Plus -> "+"
   | Mult -> "*"
   | Lt -> "<"
+  | Cons -> "::"
 
 let rec string_of_exp = function
   | EVar x -> x
   | EInt i -> string_of_int i
   | EBool b -> string_of_bool b
+  | ENil -> "()"
   | EBinOp (op, e1, e2) ->
       Printf.sprintf "(%s %s %s)" (string_of_op op) (string_of_exp e1) (string_of_exp e2)
   | EIfThenElse (e1, e2, e3) ->
@@ -39,3 +44,5 @@ let rec string_of_exp = function
       Printf.sprintf "(%s %s)" (string_of_exp e1) (string_of_exp e2)
   | ELetRec (f, e1, e2) ->
       Printf.sprintf "(let-rec %s %s %s)" f (string_of_exp e1) (string_of_exp e2)
+  | EMatchWith (e1, enil, xcar, xcdr, econs) ->
+      Printf.sprintf "(match %s (() %s)) ((%s . %s) %s)" (string_of_exp e1) (string_of_exp enil) xcar xcdr (string_of_exp econs)

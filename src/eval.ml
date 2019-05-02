@@ -4,11 +4,15 @@ type value =
   | VInt of int
   | VBool of bool
   | VProc of id * exp * value Env.t ref
+  | VNil
+  | VCons of value * value
 
-let string_of_value = function
+let rec string_of_value = function
   | VInt i -> string_of_int i
   | VBool b -> string_of_bool b
   | VProc _ -> "<fun>"
+  | VNil -> "()"
+  | VCons (v1, v2) -> "(" ^ string_of_value v1 ^ " . "^ string_of_value v2 ^")"
 
 exception Error of string
 let runtime_error s = raise (Error s)
@@ -17,6 +21,7 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | (Plus, VInt i1, VInt i2) -> k (VInt (i1 + i2))
   | (Mult, VInt i1, VInt i2) -> k (VInt (i1 * i2))
   | (Lt, VInt i1, VInt i2) -> k (VBool (i1 < i2))
+  | (Cons, v1, v2) -> k (VCons (v1, v2))
   | _ -> runtime_error "binop"
 
 let rec eval env exp k = match exp with
@@ -27,6 +32,7 @@ let rec eval env exp k = match exp with
       end
   | EInt i -> k (VInt i)
   | EBool b -> k (VBool b)
+  | ENil -> k VNil
   | EBinOp (op, e1, e2) ->
       eval env e1 (fun v1 ->
         eval env e2 (fun v2 ->
@@ -64,3 +70,15 @@ let rec eval env exp k = match exp with
       envr := env';
       eval env' e2 (fun v2 -> k v2)
   | ELetRec _ -> runtime_error "Recursive variable is not allowed in strict mode"
+  | EMatchWith (e1, enil, xcar, xcdr, econs) ->
+      eval env e1 (function
+        | VNil -> eval env enil (fun vnil -> k vnil)
+        | VCons (vcar, vcdr) ->
+            let env' =
+              env
+              |> Env.add xcar vcar
+              |> Env.add xcdr vcdr
+            in
+            eval env' econs (fun vcons -> k vcons)
+        | _ -> runtime_error "Not a list"
+      )
