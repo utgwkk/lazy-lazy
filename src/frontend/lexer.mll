@@ -8,6 +8,7 @@
     ("if", IF);
     ("in", IN);
     ("let", LET);
+    ("rec", REC);
     ("then", THEN);
     ("true", TRUE);
   ] |> List.sort compare

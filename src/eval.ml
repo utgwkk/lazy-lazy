@@ -3,7 +3,7 @@ open Syntax
 type value =
   | VInt of int
   | VBool of bool
-  | VProc of id * exp * value Env.t
+  | VProc of id * exp * value Env.t ref
 
 let string_of_value = function
   | VInt i -> string_of_int i
@@ -47,14 +47,19 @@ let rec eval env exp k = match exp with
         eval env' e2 (fun v2 -> k v2)
       )
   | EAbs (x, e) ->
-      k (VProc (x, e, env))
+      k (VProc (x, e, ref env))
   | EApp (e1, e2) ->
       eval env e1 (fun v1 ->
         eval env e2 (fun v2 ->
           match v1 with
-            | VProc (x, e, env') ->
-                let env'' = Env.add x v2 env' in
-                eval env'' e (fun v2 -> k v2)
+            | VProc (x, e, envr) ->
+                let env' = Env.add x v2 !envr in
+                eval env' e (fun v2 -> k v2)
             | _ -> runtime_error "Not a function"
         )
       )
+  | ELetRec (f, x, e1, e2) ->
+      let envr = ref env in
+      let env' = Env.add f (VProc (x, e1, envr)) env in
+      envr := env';
+      eval env' e2 (fun v2 -> k v2)
