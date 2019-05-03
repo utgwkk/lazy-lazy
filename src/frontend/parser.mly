@@ -68,5 +68,8 @@ Expr :
   | FUN x=ID RARROW e=Expr %prec fun_exp { EAbs (x, e) }
   | MATCH e1=Expr WITH NIL RARROW enil=Expr PIPE xcar=ID CONS xcdr=ID RARROW econs=Expr
     %prec match_exp
-    { EMatchWith (e1, enil, xcar, xcdr, econs) }
+    {
+      if xcar = xcdr then failwith "Cons identifier names should not be the same.";
+      EMatchWith (e1, enil, xcar, xcdr, econs)
+    }
   | LPAREN Expr RPAREN { $2 }
