@@ -195,7 +195,7 @@ and eval env exp k = match exp with
 let rec string_of_value = function
   | VInt i -> string_of_int i
   | VBool b -> string_of_bool b
-  | VProc (x, e, _) -> string_of_exp (EAbs (x, e))
+  | VProc _ -> "<fun>"
   | VNil -> "[]"
   | VCons (t1, t2) ->
       force t1 (fun v1 ->

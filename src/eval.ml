@@ -11,8 +11,13 @@ let rec string_of_value = function
   | VInt i -> string_of_int i
   | VBool b -> string_of_bool b
   | VProc _ -> "<fun>"
-  | VNil -> "()"
-  | VCons (v1, v2) -> "(" ^ string_of_value v1 ^ " . "^ string_of_value v2 ^")"
+  | VNil -> "[]"
+  | VCons (v1, v2) ->
+      match v1 with
+        | VCons _ ->
+            Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
+        | _ ->
+            Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
 
 exception Error of string
 let runtime_error s = raise (Error s)
