@@ -28,6 +28,9 @@ type ty =
   | TFun of ty * ty
   | TList of ty
 
+type tysc = TScheme of tyvar list * ty
+let tysc_of_ty ty = TScheme ([], ty)
+
 module FTV = Set.Make(
   struct
     type t = tyvar
@@ -41,6 +44,9 @@ let rec ftv = function
   | TVar tv -> FTV.singleton tv
   | TFun (t1, t2) -> FTV.union (ftv t1) (ftv t2)
   | TList t -> ftv t
+
+let ftv_tysc (TScheme (vars, ty)) =
+  FTV.diff (ftv ty) (FTV.of_list vars)
 
 module Env = Map.Make(String)
 
