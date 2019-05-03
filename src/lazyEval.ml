@@ -3,12 +3,12 @@ open Syntax
 type value =
   | VInt of int
   | VBool of bool
-  | VProc of id * exp * thunk Env.t ref
+  | VProc of id * exp * thunk Env.t
   | VNil
   | VCons of thunk * thunk
 
 and promise =
-  | Promise of exp * thunk Env.t ref
+  | Promise of exp * thunk Env.t
   | Value of value
 
 and thunk = promise ref
@@ -27,7 +27,7 @@ let rec force t (k : value -> 'a) =
   | Promise (e, env) ->
       begin match e with
       | EVar x ->
-          begin match Env.find_opt x !env with
+          begin match Env.find_opt x env with
             | Some t' -> force t' (fun v ->
                 t := Value v;
                 t' := Value v;
@@ -45,8 +45,8 @@ let rec force t (k : value -> 'a) =
           t := Value VNil;
           k VNil
       | EBinOp (op, e1, e2) ->
-          eval !env e1 (fun t1 ->
-            eval !env e2 (fun t2 ->
+          eval env e1 (fun t1 ->
+            eval env e2 (fun t2 ->
               match op with
                 | Cons ->
                     t := Value (VCons (t1, t2));
@@ -65,19 +65,19 @@ let rec force t (k : value -> 'a) =
             )
           )
       | EIfThenElse (e1, e2, e3) ->
-          eval !env e1 (fun t1 ->
+          eval env e1 (fun t1 ->
             force t1 (fun v1 ->
               t1 := Value v1;
               match v1 with
                 | VBool true ->
-                    eval !env e2 (fun t2 ->
+                    eval env e2 (fun t2 ->
                       force t2 (fun v2 ->
                         t2 := Value v2;
                         k v2
                       )
                     )
                 | VBool false ->
-                    eval !env e3 (fun t3 ->
+                    eval env e3 (fun t3 ->
                       force t3 (fun v3 ->
                         t3 := Value v3;
                         k v3
@@ -87,9 +87,9 @@ let rec force t (k : value -> 'a) =
             )
           )
       | ELet (x, e1, e2) ->
-          eval !env e1 (fun t1 ->
-            let env' = ref (Env.add x t1 !env) in
-            eval !env' e2 (fun t2 ->
+          eval env e1 (fun t1 ->
+            let env' = Env.add x t1 env in
+            eval env' e2 (fun t2 ->
               force t2 (fun v2 ->
                 t2 := Value v2;
                 k v2
@@ -101,14 +101,14 @@ let rec force t (k : value -> 'a) =
           t := Value proc;
           k proc
       | EApp (e1, e2) ->
-          eval !env e1 (fun t1 ->
+          eval env e1 (fun t1 ->
             force t1 (fun v1 ->
               t1 := Value v1;
               match v1 with
               | VProc (x, e, envr) ->
-                  eval !env e2 (fun t2 ->
-                    let env' = ref (Env.add x t2 !envr) in
-                    eval !env' e (fun t ->
+                  eval env e2 (fun t2 ->
+                    let env' = Env.add x t2 envr in
+                    eval env' e (fun t ->
                       force t (fun v ->
                         t := Value v;
                         k v
@@ -119,10 +119,10 @@ let rec force t (k : value -> 'a) =
             )
           )
       | ELetRec (f, e1, e2) ->
-          eval !env e1 (fun t1 ->
-            let envr = ref !env in
-            let env' = Env.add f t1 !env in
-            envr := env';
+          let t1 = ref (Value (VInt 1)) in (* dummy *)
+          let env' = Env.add f t1 env in
+          eval env e1 (fun t1' ->
+            t1 := !t1';
             eval env' e2 (fun t2 ->
               force t2 (fun v2 ->
                 t2 := Value v2;
@@ -131,12 +131,12 @@ let rec force t (k : value -> 'a) =
             )
           )
       | EMatchWith (e1, enil, xcar, xcdr, econs) ->
-          eval !env e1 (fun t1 ->
+          eval env e1 (fun t1 ->
             force t1 (fun v1 ->
               t1 := Value v1;
               match v1 with
               | VNil ->
-                  eval !env enil (fun tnil ->
+                  eval env enil (fun tnil ->
                     force tnil (fun vnil ->
                       tnil := Value vnil;
                       k vnil
@@ -144,12 +144,11 @@ let rec force t (k : value -> 'a) =
                   )
               | VCons (tcar, tcdr) ->
                   let env' =
-                    !env
+                    env
                     |> Env.add xcar tcar
                     |> Env.add xcdr tcdr
-                    |> ref
                   in
-                  eval !env' econs (fun tcons ->
+                  eval env' econs (fun tcons ->
                     force tcons (fun vcons ->
                       tcons := Value vcons;
                       k vcons
@@ -171,26 +170,27 @@ and eval env exp k = match exp with
   | EBool b -> k (ref (Value (VBool b)))
   | ENil -> k (ref (Value VNil))
   | EBinOp (op, e1, e2) ->
-      k (ref (Promise (EBinOp (op, e1, e2), ref env)))
+      k (ref (Promise (EBinOp (op, e1, e2), env)))
   | EIfThenElse (e1, e2, e3) ->
-      k (ref (Promise (EIfThenElse (e1, e2, e3), ref env)))
+      k (ref (Promise (EIfThenElse (e1, e2, e3), env)))
   | ELet (x, e1, e2) ->
       eval env e1 (fun t1 ->
         let env' = Env.add x t1 env in
         eval env' e2 (fun t2 -> k t2)
       )
   | EAbs (x, e) ->
-      k (ref (Value (VProc (x, e, ref env))))
+      k (ref (Value (VProc (x, e, env))))
   | EApp (e1, e2) ->
-      k (ref (Promise (EApp (e1, e2), ref env)))
+      k (ref (Promise (EApp (e1, e2), env)))
   | ELetRec (f, e1, e2) ->
-      let envr = ref env in
-      let t = ref (Promise (e1, envr)) in
+      let t = ref (Value (VInt 1)) in (* dummy *)
       let env' = Env.add f t env in
-      envr := env';
-      eval env' e2 (fun t2 -> k t2)
+      eval env' e1 (fun t1 ->
+        t := !t1;
+        eval env' e2 (fun t2 -> k t2)
+      )
   | EMatchWith (e1, enil, xcar, xcdr, xcons) ->
-      k (ref (Promise (EMatchWith (e1, enil, xcar, xcdr, xcons), ref env)))
+      k (ref (Promise (EMatchWith (e1, enil, xcar, xcdr, xcons), env)))
 
 let rec string_of_value = function
   | VInt i -> string_of_int i
