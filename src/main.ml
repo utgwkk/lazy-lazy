@@ -16,16 +16,12 @@ let rec repl prompt chan k =
   let ty = Infer.start exp in
   print_endline (string_of_ty ty);
 
-  let initial_env = Env.empty in
-
   begin
     if !strict_eval then
-      let result = Eval.eval initial_env exp (fun x -> x) in
+      let result = Eval.start exp in
       print_endline (Eval.string_of_value result)
     else
-      let result = LazyEval.eval initial_env exp (fun t ->
-        LazyEval.force t (fun v -> v)
-      ) in
+      let result = LazyEval.start exp in
       print_endline (LazyEval.string_of_value result)
   end;
 

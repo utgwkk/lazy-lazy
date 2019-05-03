@@ -87,3 +87,6 @@ let rec eval env exp k = match exp with
             eval env' econs (fun vcons -> k vcons)
         | _ -> runtime_error "Not a list"
       )
+
+let start exp =
+  eval Env.empty exp (fun x -> x)

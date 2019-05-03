@@ -210,3 +210,7 @@ let rec string_of_value = function
         )
       )
 
+let start exp =
+  eval Env.empty exp (fun t ->
+    force t (fun v -> v)
+  )
