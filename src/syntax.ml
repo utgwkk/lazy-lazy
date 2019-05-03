@@ -54,7 +54,7 @@ let string_of_op = function
   | Plus -> "+"
   | Mult -> "*"
   | Lt -> "<"
-  | Cons -> "::"
+  | Cons -> "cons"
 
 let rec string_of_exp = function
   | EVar x -> x
