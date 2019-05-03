@@ -19,6 +19,29 @@ type exp =
   | ELetRec of id * exp * exp
   | EMatchWith of exp * exp * id * id * exp
 
+type tyvar = int
+
+type ty =
+  | TInt
+  | TBool
+  | TVar of tyvar
+  | TFun of ty * ty
+  | TList of ty
+
+module FTV = Set.Make(
+  struct
+    type t = tyvar
+    let compare = compare
+  end
+)
+
+let rec ftv = function
+  | TInt
+  | TBool -> FTV.empty
+  | TVar tv -> FTV.singleton tv
+  | TFun (t1, t2) -> FTV.union (ftv t1) (ftv t2)
+  | TList t -> ftv t
+
 module Env = Map.Make(String)
 
 let string_of_op = function
@@ -46,3 +69,21 @@ let rec string_of_exp = function
       Printf.sprintf "(let-rec %s %s %s)" f (string_of_exp e1) (string_of_exp e2)
   | EMatchWith (e1, enil, xcar, xcdr, econs) ->
       Printf.sprintf "(match %s (() %s)) ((%s . %s) %s)" (string_of_exp e1) (string_of_exp enil) xcar xcdr (string_of_exp econs)
+
+let rec string_of_ty = function
+  | TInt -> "int"
+  | TBool -> "bool"
+  | TVar tv -> "'t" ^ string_of_int tv
+  | TFun (t1, t2) ->
+      begin match t1 with
+        | TFun _ ->
+            Printf.sprintf "(%s) -> %s" (string_of_ty t1) (string_of_ty t2)
+        | _ ->
+            Printf.sprintf "%s -> %s" (string_of_ty t1) (string_of_ty t2)
+      end
+  | TList t ->
+      begin match t with
+        | TFun _ ->
+            Printf.sprintf "(%s) list" (string_of_ty t)
+        | _ -> string_of_ty t ^ " list"
+      end

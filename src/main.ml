@@ -13,6 +13,9 @@ let rec repl prompt chan k =
   let exp = Parser.main Lexer.main (Lexing.from_channel chan) in
   if_verbose (fun () -> print_endline (string_of_exp exp));
 
+  let ty = Infer.start exp in
+  print_endline (string_of_ty ty);
+
   let initial_env = Env.empty in
 
   begin
