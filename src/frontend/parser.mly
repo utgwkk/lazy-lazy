@@ -45,8 +45,26 @@ Expr :
   | Expr LT Expr { EBinOp (Lt, $1, $3) }
   | Expr CONS Expr { EBinOp (Cons, $1, $3) }
   | IF e1=Expr THEN e2=Expr ELSE e3=Expr %prec if_exp { EIfThenElse (e1, e2, e3) }
-  | LET x=ID EQ e1=Expr IN e2=Expr %prec let_exp { ELet (x, e1, e2) }
-  | LET REC f=ID EQ e1=Expr IN e2=Expr %prec let_exp { ELetRec (f, e1, e2) }
+  | LET x=ID xs=list(ID) EQ e1=Expr IN e2=Expr
+    %prec let_exp
+    {
+      let e1' =
+        List.fold_right (fun x e ->
+          EAbs (x, e)
+        ) xs e1
+      in
+      ELet (x, e1', e2)
+    }
+  | LET REC f=ID xs=list(ID) EQ e1=Expr IN e2=Expr
+    %prec let_exp
+    {
+      let e1' =
+        List.fold_right (fun x e ->
+          EAbs (x, e)
+        ) xs e1
+      in
+      ELetRec (f, e1', e2)
+    }
   | FUN x=ID RARROW e=Expr %prec fun_exp { EAbs (x, e) }
   | MATCH e1=Expr WITH NIL RARROW enil=Expr PIPE xcar=ID CONS xcdr=ID RARROW econs=Expr
     %prec match_exp
