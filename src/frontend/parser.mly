@@ -66,7 +66,7 @@ Expr :
       ELetRec (f, e1', e2)
     }
   | FUN x=ID RARROW e=Expr %prec fun_exp { EAbs (x, e) }
-  | MATCH e1=Expr WITH NIL RARROW enil=Expr PIPE xcar=ID CONS xcdr=ID RARROW econs=Expr
+  | MATCH e1=Expr WITH option(PIPE) NIL RARROW enil=Expr PIPE xcar=ID CONS xcdr=ID RARROW econs=Expr
     %prec match_exp
     {
       if xcar = xcdr then failwith "Cons identifier names should not be the same.";
