@@ -65,7 +65,15 @@ Expr :
       in
       ELetRec (f, e1', e2)
     }
-  | FUN x=ID RARROW e=Expr %prec fun_exp { EAbs (x, e) }
+  | FUN xs=nonempty_list(ID) RARROW e=Expr
+    %prec fun_exp
+    {
+      let e' =
+        List.fold_right (fun x e ->
+          EAbs (x, e)
+        ) xs e
+      in e'
+    }
   | MATCH e1=Expr WITH option(PIPE) NIL RARROW enil=Expr PIPE xcar=ID CONS xcdr=ID RARROW econs=Expr
     %prec match_exp
     {
