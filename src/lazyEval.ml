@@ -7,9 +7,11 @@ type value =
   | VNil
   | VCons of thunk * thunk
 
-and thunk =
+and promise =
   | Promise of exp * thunk Env.t ref
   | Value of value
+
+and thunk = promise ref
 
 exception Error of string
 let runtime_error s = raise (Error s)
@@ -20,26 +22,44 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | (Lt, VInt i1, VInt i2) -> k (VBool (i1 < i2))
   | _ -> runtime_error "binop"
 
-let rec force t (k : value -> 'a) = match t with
+let rec force t (k : value -> 'a) =
+  let p = !t in match p with
   | Promise (e, env) ->
       begin match e with
       | EVar x ->
           begin match Env.find_opt x !env with
-            | Some t -> force t (fun v -> k v)
+            | Some t' -> force t' (fun v ->
+                t := Value v;
+                t' := Value v;
+                k v
+              )
             | None -> runtime_error ("Variable " ^ x ^ " is not bounded")
           end
-      | EInt i -> k (VInt i)
-      | EBool b -> k (VBool b)
-      | ENil -> k VNil
+      | EInt i ->
+          t := Value (VInt i);
+          k (VInt i)
+      | EBool b ->
+          t := Value (VBool b);
+          k (VBool b)
+      | ENil ->
+          t := Value VNil;
+          k VNil
       | EBinOp (op, e1, e2) ->
           eval !env e1 (fun t1 ->
             eval !env e2 (fun t2 ->
               match op with
-                | Cons -> k (VCons (t1, t2))
+                | Cons ->
+                    t := Value (VCons (t1, t2));
+                    k (VCons (t1, t2))
                 | _ ->
                     force t1 (fun v1 ->
+                      t1 := Value v1;
                       force t2 (fun v2 ->
-                        eval_binop op v1 v2 k
+                        t2 := Value v2;
+                        eval_binop op v1 v2 (fun v ->
+                          t := Value v;
+                          k v
+                        )
                       )
                     )
             )
@@ -47,14 +67,21 @@ let rec force t (k : value -> 'a) = match t with
       | EIfThenElse (e1, e2, e3) ->
           eval !env e1 (fun t1 ->
             force t1 (fun v1 ->
+              t1 := Value v1;
               match v1 with
                 | VBool true ->
                     eval !env e2 (fun t2 ->
-                      force t2 (fun v2 -> k v2)
+                      force t2 (fun v2 ->
+                        t2 := Value v2;
+                        k v2
+                      )
                     )
                 | VBool false ->
                     eval !env e3 (fun t3 ->
-                      force t3 (fun v3 -> k v3)
+                      force t3 (fun v3 ->
+                        t3 := Value v3;
+                        k v3
+                      )
                     )
                 | _ -> runtime_error "Condition must be boolean."
             )
@@ -63,18 +90,29 @@ let rec force t (k : value -> 'a) = match t with
           eval !env e1 (fun t1 ->
             let env' = ref (Env.add x t1 !env) in
             eval !env' e2 (fun t2 ->
-              force t2 (fun v2 -> k v2)
+              force t2 (fun v2 ->
+                t2 := Value v2;
+                k v2
+              )
             )
           )
-      | EAbs (x, e) -> k (VProc (x, e, env))
+      | EAbs (x, e) ->
+          let proc = VProc (x, e, env) in
+          t := Value proc;
+          k proc
       | EApp (e1, e2) ->
           eval !env e1 (fun t1 ->
-            force t1 (function
+            force t1 (fun v1 ->
+              t1 := Value v1;
+              match v1 with
               | VProc (x, e, envr) ->
                   eval !env e2 (fun t2 ->
                     let env' = ref (Env.add x t2 !envr) in
                     eval !env' e (fun t ->
-                      force t (fun v -> k v)
+                      force t (fun v ->
+                        t := Value v;
+                        k v
+                      )
                     )
                   )
               | _ -> runtime_error "Not a function."
@@ -86,15 +124,23 @@ let rec force t (k : value -> 'a) = match t with
             let env' = Env.add f t1 !env in
             envr := env';
             eval env' e2 (fun t2 ->
-              force t2 (fun v2 -> k v2)
+              force t2 (fun v2 ->
+                t2 := Value v2;
+                k v2
+              )
             )
           )
       | EMatchWith (e1, enil, xcar, xcdr, econs) ->
           eval !env e1 (fun t1 ->
-            force t1 (function
+            force t1 (fun v1 ->
+              t1 := Value v1;
+              match v1 with
               | VNil ->
                   eval !env enil (fun tnil ->
-                    force tnil (fun vnil -> k vnil)
+                    force tnil (fun vnil ->
+                      tnil := Value vnil;
+                      k vnil
+                    )
                   )
               | VCons (tcar, tcdr) ->
                   let env' =
@@ -104,7 +150,10 @@ let rec force t (k : value -> 'a) = match t with
                     |> ref
                   in
                   eval !env' econs (fun tcons ->
-                    force tcons (fun vcons -> k vcons)
+                    force tcons (fun vcons ->
+                      tcons := Value vcons;
+                      k vcons
+                    )
                   )
               | _ -> runtime_error "Not a list."
             )
@@ -118,30 +167,30 @@ and eval env exp k = match exp with
         | Some t -> k t
         | None -> runtime_error ("Variable " ^ x ^ " is not bounded")
       end
-  | EInt i -> k (Value (VInt i))
-  | EBool b -> k (Value (VBool b))
-  | ENil -> k (Value VNil)
+  | EInt i -> k (ref (Value (VInt i)))
+  | EBool b -> k (ref (Value (VBool b)))
+  | ENil -> k (ref (Value VNil))
   | EBinOp (op, e1, e2) ->
-      k (Promise (EBinOp (op, e1, e2), ref env))
+      k (ref (Promise (EBinOp (op, e1, e2), ref env)))
   | EIfThenElse (e1, e2, e3) ->
-      k (Promise (EIfThenElse (e1, e2, e3), ref env))
+      k (ref (Promise (EIfThenElse (e1, e2, e3), ref env)))
   | ELet (x, e1, e2) ->
       eval env e1 (fun t1 ->
         let env' = Env.add x t1 env in
         eval env' e2 (fun t2 -> k t2)
       )
   | EAbs (x, e) ->
-      k (Value (VProc (x, e, ref env)))
+      k (ref (Value (VProc (x, e, ref env))))
   | EApp (e1, e2) ->
-      k (Promise (EApp (e1, e2), ref env))
+      k (ref (Promise (EApp (e1, e2), ref env)))
   | ELetRec (f, e1, e2) ->
       let envr = ref env in
-      let t = Promise (e1, envr) in
+      let t = ref (Promise (e1, envr)) in
       let env' = Env.add f t env in
       envr := env';
       eval env' e2 (fun t2 -> k t2)
   | EMatchWith (e1, enil, xcar, xcdr, xcons) ->
-      k (Promise (EMatchWith (e1, enil, xcar, xcdr, xcons), ref env))
+      k (ref (Promise (EMatchWith (e1, enil, xcar, xcdr, xcons), ref env)))
 
 let rec string_of_value = function
   | VInt i -> string_of_int i
@@ -151,6 +200,8 @@ let rec string_of_value = function
   | VCons (t1, t2) ->
       force t1 (fun v1 ->
         force t2 (fun v2 ->
+          t1 := Value v1;
+          t2 := Value v2;
           match v1 with
             | VCons _ ->
                 Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
