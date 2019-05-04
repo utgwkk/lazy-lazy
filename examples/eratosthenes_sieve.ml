@@ -36,9 +36,9 @@ let rec take n xs = match xs with
       else h :: take (n + -1) t
 in
 let rec nth n xs = match xs with
-  | [] -> []
+  | [] -> undefined
   | h :: t ->
-      if n < 2 then h :: []
+      if n < 2 then h
       else nth (n + -1) t
 in
 let greater_than n xs = filter (fun m -> n < m) xs in
