@@ -74,7 +74,7 @@ let rec string_of_exp = function
   | ELetRec (f, e1, e2) ->
       Printf.sprintf "(let-rec %s %s %s)" f (string_of_exp e1) (string_of_exp e2)
   | EMatchWith (e1, enil, xcar, xcdr, econs) ->
-      Printf.sprintf "(match %s (() %s)) ((%s . %s) %s)" (string_of_exp e1) (string_of_exp enil) xcar xcdr (string_of_exp econs)
+      Printf.sprintf "(match %s (() %s) ((%s . %s) %s))" (string_of_exp e1) (string_of_exp enil) xcar xcdr (string_of_exp econs)
 
 let rec string_of_ty = function
   | TInt -> "int"
