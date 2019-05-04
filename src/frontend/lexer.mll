@@ -12,6 +12,7 @@
     ("rec", REC);
     ("then", THEN);
     ("true", TRUE);
+    ("undefined", UNDEFINED);
     ("with", WITH);
   ] |> List.sort compare
 }

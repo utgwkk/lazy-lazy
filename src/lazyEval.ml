@@ -44,6 +44,7 @@ let rec force t (k : value -> 'a) =
       | ENil ->
           t := Value VNil;
           k VNil
+      | EUndefined -> runtime_error "undefined"
       | EBinOp (op, e1, e2) ->
           eval env e1 (fun t1 ->
             eval env e2 (fun t2 ->
@@ -169,6 +170,7 @@ and eval env exp k = match exp with
   | EInt i -> k (ref (Value (VInt i)))
   | EBool b -> k (ref (Value (VBool b)))
   | ENil -> k (ref (Value VNil))
+  | EUndefined -> k (ref (Promise (EUndefined, env)))
   | EBinOp (op, e1, e2) ->
       k (ref (Promise (EBinOp (op, e1, e2), env)))
   | EIfThenElse (e1, e2, e3) ->

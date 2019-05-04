@@ -38,6 +38,7 @@ let rec eval env exp k = match exp with
   | EInt i -> k (VInt i)
   | EBool b -> k (VBool b)
   | ENil -> k VNil
+  | EUndefined -> runtime_error "undefined"
   | EBinOp (op, e1, e2) ->
       eval env e1 (fun v1 ->
         eval env e2 (fun v2 ->

@@ -13,6 +13,7 @@
 %token NIL
 %token PLUS MULT LT CONS
 %token MATCH WITH PIPE
+%token UNDEFINED
 
 %token <int> INTV
 %token <Syntax.id> ID
@@ -23,7 +24,7 @@
 %right CONS
 %left PLUS
 %left MULT
-%nonassoc LPAREN ID INTV TRUE FALSE NIL
+%nonassoc LPAREN ID INTV TRUE FALSE NIL UNDEFINED
 %nonassoc application
 
 %start main
@@ -39,6 +40,7 @@ Expr :
   | TRUE { EBool true }
   | FALSE { EBool false }
   | NIL { ENil }
+  | UNDEFINED { EUndefined }
   | Expr Expr %prec application { EApp ($1, $2) }
   | Expr PLUS Expr { EBinOp (Plus, $1, $3) }
   | Expr MULT Expr { EBinOp (Mult, $1, $3) }

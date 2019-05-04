@@ -102,6 +102,9 @@ let rec infer tyenv exp k = match exp with
   | ENil ->
       let tv = fresh_tyvar () in
       k ([], TList (TVar tv))
+  | EUndefined ->
+      let tv = fresh_tyvar () in
+      k ([], TVar tv)
   | EBinOp (op, e1, e2) ->
       infer tyenv e1 (fun (s1, t1) ->
         infer tyenv e2 (fun (s2, t2) ->

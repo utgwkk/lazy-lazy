@@ -11,6 +11,7 @@ type exp =
   | EInt of int
   | EBool of bool
   | ENil
+  | EUndefined
   | EBinOp of op * exp * exp
   | EIfThenElse of exp * exp * exp
   | ELet of id * exp * exp
@@ -61,6 +62,7 @@ let rec string_of_exp = function
   | EInt i -> string_of_int i
   | EBool b -> string_of_bool b
   | ENil -> "()"
+  | EUndefined -> "undefined"
   | EBinOp (op, e1, e2) ->
       Printf.sprintf "(%s %s %s)" (string_of_op op) (string_of_exp e1) (string_of_exp e2)
   | EIfThenElse (e1, e2, e3) ->
