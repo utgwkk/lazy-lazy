@@ -29,12 +29,6 @@ let rec sieve xs = match xs with
   | [] -> []
   | h :: t -> h :: sieve (sift h t)
 in
-let rec take n xs = match xs with
-  | [] -> []
-  | h :: t ->
-      if n < 1 then []
-      else h :: take (n + -1) t
-in
 let rec nth n xs = match xs with
   | [] -> undefined
   | h :: t ->
