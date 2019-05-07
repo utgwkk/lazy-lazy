@@ -18,8 +18,10 @@
 %token <int> INTV
 %token <Syntax.id> ID
 
-%nonassoc LET FUN IF MATCH
-%right let_exp fun_exp if_exp match_exp
+%right RARROW
+%nonassoc LET FUN IF
+%right MATCH
+%right let_exp fun_exp if_exp
 %left LT
 %right CONS
 %left PLUS
@@ -76,11 +78,10 @@ Expr :
         ) xs e
       in e'
     }
-  | MATCH e1=Expr WITH option(PIPE) NIL RARROW enil=Expr PIPE xcar=ID CONS xcdr=ID RARROW econs=Expr
-    %prec match_exp
+  | MATCH e=Expr WITH option(PIPE) p1=match_pattern RARROW e1=Expr gs=list(match_guard)
     {
-      if xcar = xcdr then failwith "Cons identifier names should not be the same.";
-      EMatchWith (e1, enil, xcar, xcdr, econs)
+      let gs' = (p1, e1) :: gs in
+      EMatchWith (e, gs')
     }
   | bioper_fun { $1 }
   | LPAREN Expr RPAREN { $2 }
@@ -89,3 +90,15 @@ bioper_fun :
   | LPAREN PLUS RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Plus, EVar "##LHS##", EVar "##RHS##"))) }
   | LPAREN MULT RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Mult, EVar "##LHS##", EVar "##RHS##"))) }
   | LPAREN LT RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Lt, EVar "##LHS##", EVar "##RHS##"))) }
+
+match_guard :
+  | PIPE p=match_pattern RARROW e=Expr { (p, e) }
+
+match_pattern :
+  | ID { EVar $1 }
+  | INTV { EInt $1 }
+  | TRUE { EBool true }
+  | FALSE { EBool false }
+  | NIL { ENil }
+  | hd=match_pattern CONS tl=match_pattern { EBinOp (Cons, hd, tl) }
+  | LPAREN match_pattern RPAREN { $2 }
