@@ -25,7 +25,13 @@ let rec repl prompt chan k =
         LazyEval.string_of_value result
     end
   in
-  Printf.printf "- : %s = %s\n" (string_of_ty ty) value_str;
+
+  (
+    if value_str = "undefined" then
+      print_endline "Exception: undefined"
+    else
+      Printf.printf "- : %s = %s\n" (string_of_ty ty) value_str
+  );
 
   k ()
 

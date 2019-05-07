@@ -6,10 +6,12 @@ type value =
   | VProc of id * exp * thunk Env.t
   | VNil
   | VCons of thunk * thunk
+  | VUndefined
 
 and promise =
   | Promise of exp * thunk Env.t
   | Value of value
+  | Exception
 
 and thunk = promise ref
 
@@ -155,11 +157,13 @@ let rec force t (k : value -> 'a) =
                       k vcons
                     )
                   )
+              | VUndefined -> VUndefined
               | _ -> runtime_error "Not a list."
             )
           )
     end
   | Value v -> k v
+  | Exception -> VUndefined
 
 and eval env exp k = match exp with
   | EVar x ->
@@ -170,7 +174,7 @@ and eval env exp k = match exp with
   | EInt i -> k (ref (Value (VInt i)))
   | EBool b -> k (ref (Value (VBool b)))
   | ENil -> k (ref (Value VNil))
-  | EUndefined -> k (ref (Promise (EUndefined, env)))
+  | EUndefined -> k (ref Exception)
   | EBinOp (op, e1, e2) ->
       k (ref (Promise (EBinOp (op, e1, e2), env)))
   | EIfThenElse (e1, e2, e3) ->
@@ -200,17 +204,15 @@ let rec string_of_value = function
   | VProc _ -> "<fun>"
   | VNil -> "[]"
   | VCons (t1, t2) ->
-      force t1 (fun v1 ->
-        force t2 (fun v2 ->
-          t1 := Value v1;
-          t2 := Value v2;
-          match v1 with
-            | VCons _ ->
-                Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
-            | _ ->
-                Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
-        )
-      )
+      let v1 = force t1 (fun v -> t1 := Value v; v) in
+      let v2 = force t2 (fun v -> t2 := Value v; v) in
+      begin match v1 with
+        | VCons _ ->
+            Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
+        | _ ->
+            Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
+      end
+  | VUndefined -> "undefined"
 
 let start exp =
   eval Env.empty exp (fun t ->

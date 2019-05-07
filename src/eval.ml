@@ -6,6 +6,7 @@ type value =
   | VProc of id * exp * value Env.t ref
   | VNil
   | VCons of value * value
+  | VUndefined
 
 let rec string_of_value = function
   | VInt i -> string_of_int i
@@ -13,11 +14,13 @@ let rec string_of_value = function
   | VProc _ -> "<fun>"
   | VNil -> "[]"
   | VCons (v1, v2) ->
-      match v1 with
+      begin match v1 with
         | VCons _ ->
             Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
         | _ ->
             Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
+      end
+  | VUndefined -> "undefined"
 
 exception Error of string
 let runtime_error s = raise (Error s)
@@ -38,7 +41,7 @@ let rec eval env exp k = match exp with
   | EInt i -> k (VInt i)
   | EBool b -> k (VBool b)
   | ENil -> k VNil
-  | EUndefined -> runtime_error "undefined"
+  | EUndefined -> VUndefined
   | EBinOp (op, e1, e2) ->
       eval env e1 (fun v1 ->
         eval env e2 (fun v2 ->
