@@ -14,16 +14,18 @@ let rec repl prompt chan k =
   if_verbose (fun () -> print_endline (string_of_exp exp));
 
   let ty = Infer.start exp in
-  print_endline (string_of_ty ty);
 
-  begin
-    if !strict_eval then
-      let result = Eval.start exp in
-      print_endline (Eval.string_of_value result)
-    else
-      let result = LazyEval.start exp in
-      print_endline (LazyEval.string_of_value result)
-  end;
+  let value_str =
+    begin
+      if !strict_eval then
+        let result = Eval.start exp in
+        Eval.string_of_value result
+      else
+        let result = LazyEval.start exp in
+        LazyEval.string_of_value result
+    end
+  in
+  Printf.printf "- : %s = %s\n" (string_of_ty ty) value_str;
 
   k ()
 
