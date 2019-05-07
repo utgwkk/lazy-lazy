@@ -82,4 +82,10 @@ Expr :
       if xcar = xcdr then failwith "Cons identifier names should not be the same.";
       EMatchWith (e1, enil, xcar, xcdr, econs)
     }
+  | bioper_fun { $1 }
   | LPAREN Expr RPAREN { $2 }
+
+bioper_fun :
+  | LPAREN PLUS RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Plus, EVar "##LHS##", EVar "##RHS##"))) }
+  | LPAREN MULT RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Mult, EVar "##LHS##", EVar "##RHS##"))) }
+  | LPAREN LT RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Lt, EVar "##LHS##", EVar "##RHS##"))) }

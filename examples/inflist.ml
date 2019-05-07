@@ -13,6 +13,6 @@ let rec zipwith = fun f -> fun xs -> fun ys -> match xs with
       [] -> []
     | yhd :: ytl -> f xhd yhd :: zipwith f xtl ytl
 in
-let rec fib = 0 :: 1 :: zipwith (fun x -> fun y -> x + y) fib (tl fib) in
+let rec fib = 0 :: 1 :: zipwith (+) fib (tl fib) in
 take 20 fib
 ;;

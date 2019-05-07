@@ -11,7 +11,7 @@ let rec divmod m n =
   if m < n then m
   else divmod (m + n * -1) n
 in
-let rec nat = 0 :: map (fun x -> x + 1) nat
+let rec nat = 0 :: map ((+) 1) nat
 in
 let rec filter f xs = match xs with
   | [] -> []
@@ -35,7 +35,7 @@ let rec nth n xs = match xs with
       if n < 2 then h
       else nth (n + -1) t
 in
-let greater_than n xs = filter (fun m -> n < m) xs in
+let greater_than n xs = filter ((<) n) xs in
 let primes = sieve (greater_than 1 nat) in
 nth 100 primes
 ;;
