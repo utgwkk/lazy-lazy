@@ -95,3 +95,36 @@ let rec string_of_ty = function
             Printf.sprintf "(%s) list" (string_of_ty t)
         | _ -> string_of_ty t ^ " list"
       end
+
+let pp_ty ty =
+  let rec tvs = function
+    | TInt
+    | TBool -> TV.empty
+    | TVar tv -> TV.singleton tv
+    | TFun (t1, t2) -> TV.union (tvs t1) (tvs t2)
+    | TList t -> tvs t
+  in
+  let tv_map =
+    tvs ty
+    |> TV.elements
+    |> List.rev
+    |> List.mapi (fun i tv -> (tv, i + 1))
+  in
+  let rec string_of_ty = function
+    | TInt -> "int"
+    | TBool -> "bool"
+    | TVar tv -> "'t" ^ string_of_int (List.assoc tv tv_map)
+    | TFun (t1, t2) ->
+      begin match t1 with
+        | TFun _ ->
+            Printf.sprintf "(%s) -> %s" (string_of_ty t1) (string_of_ty t2)
+        | _ ->
+            Printf.sprintf "%s -> %s" (string_of_ty t1) (string_of_ty t2)
+      end
+    | TList t ->
+      begin match t with
+        | TFun _ ->
+            Printf.sprintf "(%s) list" (string_of_ty t)
+        | _ -> string_of_ty t ^ " list"
+      end
+  in string_of_ty ty

@@ -30,7 +30,7 @@ let rec repl prompt chan k =
     if value_str = "undefined" then
       print_endline "Exception: undefined"
     else
-      Printf.printf "- : %s = %s\n" (string_of_ty ty) value_str
+      Printf.printf "- : %s = %s\n" (pp_ty ty) value_str
   );
 
   k ()
