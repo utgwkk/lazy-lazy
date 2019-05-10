@@ -40,7 +40,7 @@ let rec force t (k : value -> 'a) =
       | EInt i -> k (VInt i)
       | EBool b -> k (VBool b)
       | ENil -> k VNil
-      | EUndefined -> runtime_error "undefined"
+      | EUndefined -> VUndefined
       | EBinOp (op, e1, e2) ->
           eval env e1 (fun t1 ->
             eval env e2 (fun t2 ->
