@@ -32,7 +32,7 @@ type ty =
 type tysc = TScheme of tyvar list * ty
 let tysc_of_ty ty = TScheme ([], ty)
 
-module FTV = Set.Make(
+module TV = Set.Make(
   struct
     type t = tyvar
     let compare = compare
@@ -41,13 +41,13 @@ module FTV = Set.Make(
 
 let rec ftv = function
   | TInt
-  | TBool -> FTV.empty
-  | TVar tv -> FTV.singleton tv
-  | TFun (t1, t2) -> FTV.union (ftv t1) (ftv t2)
+  | TBool -> TV.empty
+  | TVar tv -> TV.singleton tv
+  | TFun (t1, t2) -> TV.union (ftv t1) (ftv t2)
   | TList t -> ftv t
 
 let ftv_tysc (TScheme (vars, ty)) =
-  FTV.diff (ftv ty) (FTV.of_list vars)
+  TV.diff (ftv ty) (TV.of_list vars)
 
 module Env = Map.Make(String)
 

@@ -60,19 +60,19 @@ let fresh_tyvar =
 
 let freevar_tyenv tyenv =
   Env.fold (fun _ tysc set ->
-    FTV.union (ftv_tysc tysc) set
-  ) tyenv FTV.empty
+    TV.union (ftv_tysc tysc) set
+  ) tyenv TV.empty
 
 let closure ty tyenv subst =
   let fv_tyenv' = freevar_tyenv tyenv in
   let fv_tyenv =
-    FTV.fold (fun tv set ->
+    TV.fold (fun tv set ->
       let ftvs = ftv (subst_ty subst (TVar tv)) in
-      FTV.union set ftvs
-    ) fv_tyenv' FTV.empty
+      TV.union set ftvs
+    ) fv_tyenv' TV.empty
   in
-  let ids = FTV.diff (ftv ty) fv_tyenv in
-  TScheme (FTV.elements ids, ty)
+  let ids = TV.diff (ftv ty) fv_tyenv in
+  TScheme (TV.elements ids, ty)
 
 exception Infer_failed of string
 let infer_failed s = raise (Infer_failed s)
