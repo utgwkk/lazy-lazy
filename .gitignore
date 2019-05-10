@@ -24,6 +24,7 @@ setup.log
 
 ._d/
 ._bcdi/
+._ncdi/
 lazy-lazy
 lexer.ml
 parser.ml
