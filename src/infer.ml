@@ -86,7 +86,7 @@ let infer_op op t1 t2 = match op with
       let t = TVar tv in
       ([(t1, t); (t2, TList t)], TList t)
 
-let rec infer tyenv exp k = match exp with
+let rec infer tyenv = function
   | EVar x ->
       begin match Env.find_opt x tyenv with
         | Some (TScheme (vars, t)) ->
@@ -94,97 +94,82 @@ let rec infer tyenv exp k = match exp with
               vars
               |> List.map (fun id -> (id, TVar (fresh_tyvar ())))
             in
-            k ([], subst_ty s t)
+            ([], subst_ty s t)
         | None -> infer_failed ("Variable " ^ x ^ " is not bounded")
       end
-  | EInt _ -> k ([], TInt)
-  | EBool _ -> k ([], TBool)
+  | EInt _ -> ([], TInt)
+  | EBool _ -> ([], TBool)
   | ENil ->
       let tv = fresh_tyvar () in
-      k ([], TList (TVar tv))
+      ([], TList (TVar tv))
   | EUndefined ->
       let tv = fresh_tyvar () in
-      k ([], TVar tv)
+      ([], TVar tv)
   | EBinOp (op, e1, e2) ->
-      infer tyenv e1 (fun (s1, t1) ->
-        infer tyenv e2 (fun (s2, t2) ->
-          let (eqs_op, ty) = infer_op op t1 t2 in
-          let eqs = eqs_of_subst s1 @ eqs_of_subst s2 @ eqs_op in
-          let s3 = unify eqs in
-          k (s3, subst_ty s3 ty)
-        )
-      )
+      let (s1, t1) = infer tyenv e1 in
+      let (s2, t2) = infer tyenv e2 in
+      let (eqs_op, ty) = infer_op op t1 t2 in
+      let eqs = eqs_of_subst s1 @ eqs_of_subst s2 @ eqs_op in
+      let s3 = unify eqs in
+      (s3, subst_ty s3 ty)
   | EIfThenElse (e1, e2, e3) ->
-      infer tyenv e1 (fun (s1, t1) ->
-        infer tyenv e2 (fun (s2, t2) ->
-          infer tyenv e3 (fun (s3, t3) ->
-            let eqs =
-              [(t1, TBool); (t2, t3)]
-              @ eqs_of_subst s1 @ eqs_of_subst s2 @ eqs_of_subst s3
-            in
-            let s4 = unify eqs in
-            k (s4, subst_ty s4 t2)
-          )
-        )
-      )
+      let (s1, t1) = infer tyenv e1 in
+      let (s2, t2) = infer tyenv e2 in
+      let (s3, t3) = infer tyenv e3 in
+      let eqs =
+        [(t1, TBool); (t2, t3)]
+        @ eqs_of_subst s1 @ eqs_of_subst s2 @ eqs_of_subst s3
+      in
+      let s4 = unify eqs in
+      (s4, subst_ty s4 t2)
   | ELet (x, e1, e2) ->
-      infer tyenv e1 (fun (s1, t1) ->
-        let tysc1 = closure t1 tyenv s1 in
-        let tyenv' = Env.add x tysc1 tyenv in
-        infer tyenv' e2 (fun (s2, t2) ->
-          let eqs = eqs_of_subst s1 @ eqs_of_subst s2 in
-          let s3 = unify eqs in
-          k (s3, subst_ty s3 t2)
-        )
-      )
+      let (s1, t1) = infer tyenv e1 in
+      let tysc1 = closure t1 tyenv s1 in
+      let tyenv' = Env.add x tysc1 tyenv in
+      let (s2, t2) = infer tyenv' e2 in
+      let eqs = eqs_of_subst s1 @ eqs_of_subst s2 in
+      let s3 = unify eqs in
+      (s3, subst_ty s3 t2)
   | EAbs (x, e) ->
       let tx = TVar (fresh_tyvar ()) in
       let tyenv' = Env.add x (tysc_of_ty tx) tyenv in
-      infer tyenv' e (fun (s1, t1) ->
-        k (s1, TFun (subst_ty s1 tx, t1))
-      )
+      let (s1, t1) = infer tyenv' e in
+      (s1, TFun (subst_ty s1 tx, t1))
   | EApp (e1, e2) ->
-      infer tyenv e1 (fun (s1, t1) ->
-        infer tyenv e2 (fun (s2, t2) ->
-          let tr = TVar (fresh_tyvar ()) in
-          let eqs =
-            [(t1, TFun (t2, tr))] @ eqs_of_subst s1 @ eqs_of_subst s2
-          in
-          let s3 = unify eqs in
-          k (s3, subst_ty s3 tr)
-        )
-      )
+      let (s1, t1) = infer tyenv e1 in
+      let (s2, t2) = infer tyenv e2 in
+      let tr = TVar (fresh_tyvar ()) in
+      let eqs =
+        [(t1, TFun (t2, tr))] @ eqs_of_subst s1 @ eqs_of_subst s2
+      in
+      let s3 = unify eqs in
+      (s3, subst_ty s3 tr)
   | ELetRec (x, e1, e2) ->
       let tx = TVar (fresh_tyvar ()) in
       let tyenv' = Env.add x (tysc_of_ty tx) tyenv in
-      infer tyenv' e1 (fun (s1, t1) ->
-        let eqs = [(tx, t1)] @ eqs_of_subst s1 in
-        let s = unify eqs in
-        let tysc1 = closure (subst_ty s t1) tyenv s1 in
-        let tyenv'' = Env.add x tysc1 tyenv in
-        infer tyenv'' e2 (fun (s2, t2) ->
-          k (s2, t2)
-        )
-      )
+      let (s1, t1) = infer tyenv' e1 in
+      let eqs = [(tx, t1)] @ eqs_of_subst s1 in
+      let s = unify eqs in
+      let tysc1 = closure (subst_ty s t1) tyenv s1 in
+      let tyenv'' = Env.add x tysc1 tyenv in
+      let (s2, t2) = infer tyenv'' e2 in
+      (s2, t2)
   | EMatchWith (e1, enil, xcar, xcdr, econs) ->
-      infer tyenv e1 (fun (s1, t1) ->
-        infer tyenv enil (fun (snil, tnil) ->
-          let th = TVar (fresh_tyvar ()) in
-          let tyenv' =
-            tyenv
-            |> Env.add xcar (tysc_of_ty th)
-            |> Env.add xcdr (tysc_of_ty (TList th))
-          in
-          infer tyenv' econs (fun (scons, tcons) ->
-            let eqs =
-              [(t1, TList th); (tnil, tcons)]
-              @ eqs_of_subst s1 @ eqs_of_subst snil @ eqs_of_subst scons
-            in
-            let s = unify eqs in
-            k (s, subst_ty s tnil)
-          )
-        )
-      )
+      let (s1, t1) = infer tyenv e1 in
+      let (snil, tnil) = infer tyenv enil in
+      let th = TVar (fresh_tyvar ()) in
+      let tyenv' =
+        tyenv
+        |> Env.add xcar (tysc_of_ty th)
+        |> Env.add xcdr (tysc_of_ty (TList th))
+      in
+      let (scons, tcons) = infer tyenv' econs in
+      let eqs =
+        [(t1, TList th); (tnil, tcons)]
+        @ eqs_of_subst s1 @ eqs_of_subst snil @ eqs_of_subst scons
+      in
+      let s = unify eqs in
+      (s, subst_ty s tnil)
 
 let start exp =
-  infer Env.empty exp snd
+  infer Env.empty exp |> snd
