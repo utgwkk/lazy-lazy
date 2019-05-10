@@ -11,7 +11,7 @@ SOURCES = $(addprefix $(SRCDIR)/, \
 					) \
 					$(MAIN)
 MAIN = $(SRCDIR)/main.ml
-RESULT = prog
+RESULT = lazy-lazy
 
 all: frontend
 
