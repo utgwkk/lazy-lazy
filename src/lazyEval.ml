@@ -25,44 +25,33 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | _ -> runtime_error "binop"
 
 let rec force t (k : value -> 'a) =
+  let k v = t := Value v; k v in
   let p = !t in match p with
   | Promise (e, env) ->
       begin match e with
       | EVar x ->
           begin match Env.find_opt x env with
             | Some t' -> force t' (fun v ->
-                t := Value v;
                 t' := Value v;
                 k v
               )
             | None -> runtime_error ("Variable " ^ x ^ " is not bounded")
           end
-      | EInt i ->
-          t := Value (VInt i);
-          k (VInt i)
-      | EBool b ->
-          t := Value (VBool b);
-          k (VBool b)
-      | ENil ->
-          t := Value VNil;
-          k VNil
+      | EInt i -> k (VInt i)
+      | EBool b -> k (VBool b)
+      | ENil -> k VNil
       | EUndefined -> runtime_error "undefined"
       | EBinOp (op, e1, e2) ->
           eval env e1 (fun t1 ->
             eval env e2 (fun t2 ->
               match op with
-                | Cons ->
-                    t := Value (VCons (t1, t2));
-                    k (VCons (t1, t2))
+                | Cons -> k (VCons (t1, t2))
                 | _ ->
                     force t1 (fun v1 ->
                       t1 := Value v1;
                       force t2 (fun v2 ->
                         t2 := Value v2;
-                        eval_binop op v1 v2 (fun v ->
-                          t := Value v;
-                          k v
-                        )
+                        eval_binop op v1 v2 (fun v -> k v)
                       )
                     )
             )
@@ -101,7 +90,6 @@ let rec force t (k : value -> 'a) =
           )
       | EAbs (x, e) ->
           let proc = VProc (x, e, env) in
-          t := Value proc;
           k proc
       | EApp (e1, e2) ->
           eval env e1 (fun t1 ->
@@ -112,10 +100,7 @@ let rec force t (k : value -> 'a) =
                   eval env e2 (fun t2 ->
                     let env' = Env.add x t2 envr in
                     eval env' e (fun t ->
-                      force t (fun v ->
-                        t := Value v;
-                        k v
-                      )
+                      force t (fun v -> k v)
                     )
                   )
               | _ -> runtime_error "Not a function."
