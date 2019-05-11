@@ -168,7 +168,9 @@ let rec infer tyenv = function
             let (eqs_hd, tyenv_hd) = pattern tv hd in
             let (eqs_tl, tyenv_tl) = pattern (TList tv) tl in
             let tyenv' =
-              Env.union (fun _ _ b -> Some b) tyenv_hd tyenv_tl
+              Env.union (fun k _ _ ->
+                infer_failed ("the variable " ^ k ^ " occurs twice in pattern-match expression")
+              ) tyenv_hd tyenv_tl
             in
             let eqs = [(t, TList tv)] @ eqs_hd @ eqs_tl in
             (eqs, tyenv')
