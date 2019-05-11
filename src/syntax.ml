@@ -85,23 +85,26 @@ let rec string_of_exp = function
       in
       Printf.sprintf "(match %s %s)" (string_of_exp e) guards'
 
+let large_ty = function
+  | TInt
+  | TBool
+  | TVar _
+  | TList _ -> false
+  | TFun _ -> true
+
 let rec string_of_ty = function
   | TInt -> "int"
   | TBool -> "bool"
   | TVar tv -> "'t" ^ string_of_int tv
   | TFun (t1, t2) ->
-      begin match t1 with
-        | TFun _ ->
-            Printf.sprintf "(%s) -> %s" (string_of_ty t1) (string_of_ty t2)
-        | _ ->
-            Printf.sprintf "%s -> %s" (string_of_ty t1) (string_of_ty t2)
-      end
+      if large_ty t1 then
+        Printf.sprintf "(%s) -> %s" (string_of_ty t1) (string_of_ty t2)
+      else
+        Printf.sprintf "%s -> %s" (string_of_ty t1) (string_of_ty t2)
   | TList t ->
-      begin match t with
-        | TFun _ ->
-            Printf.sprintf "(%s) list" (string_of_ty t)
-        | _ -> string_of_ty t ^ " list"
-      end
+      if large_ty t then
+        Printf.sprintf "(%s) list" (string_of_ty t)
+      else string_of_ty t ^ " list"
 
 let pp_ty ty =
   let rec tvs = function
@@ -122,16 +125,12 @@ let pp_ty ty =
     | TBool -> "bool"
     | TVar tv -> "'t" ^ string_of_int (List.assoc tv tv_map)
     | TFun (t1, t2) ->
-      begin match t1 with
-        | TFun _ ->
-            Printf.sprintf "(%s) -> %s" (string_of_ty t1) (string_of_ty t2)
-        | _ ->
-            Printf.sprintf "%s -> %s" (string_of_ty t1) (string_of_ty t2)
-      end
+        if large_ty t1 then
+          Printf.sprintf "(%s) -> %s" (string_of_ty t1) (string_of_ty t2)
+        else
+          Printf.sprintf "%s -> %s" (string_of_ty t1) (string_of_ty t2)
     | TList t ->
-      begin match t with
-        | TFun _ ->
-            Printf.sprintf "(%s) list" (string_of_ty t)
-        | _ -> string_of_ty t ^ " list"
-      end
+        if large_ty t then
+          Printf.sprintf "(%s) list" (string_of_ty t)
+        else string_of_ty t ^ " list"
   in string_of_ty ty
