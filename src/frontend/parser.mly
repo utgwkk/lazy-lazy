@@ -19,7 +19,7 @@
 %token <int> INTV
 %token <Syntax.id> ID
 
-%right RARROW
+%nonassoc match_guard_p
 %nonassoc LET FUN IF MATCH
 %right let_exp fun_exp if_exp
 %left LT
@@ -105,7 +105,8 @@ tuple_expr :
     }
 
 match_guard :
-  | p=match_pattern RARROW e=Expr { (p, e) }
+  | p=match_pattern RARROW e=Expr
+    %prec match_guard_p { (p, e) }
 
 match_pattern :
   | ID { EVar $1 }
