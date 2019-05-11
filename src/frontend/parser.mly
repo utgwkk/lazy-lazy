@@ -94,15 +94,11 @@ bioper_fun :
   | LPAREN LT RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Lt, EVar "##LHS##", EVar "##RHS##"))) }
 
 list_expr :
-  | LLPAREN RLPAREN { ENil }
-  | LLPAREN e=Expr xs=list(list_body) RLPAREN {
+  | LLPAREN xs=separated_list(SEMI, Expr) RLPAREN {
       List.fold_right (fun car cdr ->
         EBinOp (Cons, car, cdr)
-      ) (e :: xs) ENil
+      ) xs ENil
     }
-
-list_body :
-  | SEMI Expr { $2 }
 
 tuple_expr :
   | LPAREN e=Expr COMMA es=separated_nonempty_list(COMMA, Expr) RPAREN
@@ -124,15 +120,11 @@ match_pattern :
   | LPAREN match_pattern RPAREN { $2 }
 
 match_list_expr :
-  | LLPAREN RLPAREN { ENil }
-  | LLPAREN e=Expr xs=list(match_list_body) RLPAREN {
+  | LLPAREN xs=separated_list(SEMI, match_pattern) RLPAREN {
       List.fold_right (fun car cdr ->
         EBinOp (Cons, car, cdr)
-      ) (e :: xs) ENil
+      ) xs ENil
     }
-
-match_list_body :
-  | SEMI match_pattern { $2 }
 
 match_tuple_expr :
   | LPAREN e=match_pattern COMMA es=separated_nonempty_list(COMMA, match_pattern) RPAREN
