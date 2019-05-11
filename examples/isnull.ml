@@ -1,6 +1,6 @@
 let null xs = match xs with
   | [] -> true
-  | h :: t -> false
+  | _ -> false
 in
 null (undefined :: [])
 ;;
