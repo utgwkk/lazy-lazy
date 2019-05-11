@@ -157,7 +157,9 @@ let rec infer tyenv = function
   | EMatchWith (e1, guards) ->
       (* ty -> exp -> eqs * tyenv *)
       let rec pattern t = function
-        | EVar x -> ([], Env.singleton x (tysc_of_ty t))
+        | EVar x ->
+            if x = ignore_id then ([], Env.empty)
+            else ([], Env.singleton x (tysc_of_ty t))
         | EInt _ -> ([(t, TInt)], Env.empty)
         | EBool _ -> ([(t, TBool)], Env.empty)
         | ENil ->
