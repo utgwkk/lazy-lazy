@@ -140,26 +140,26 @@ let rec force t k =
           let rec can_eval_guard p t = match p with
             | EVar x -> true
             | EInt i ->
-                let v = force t (fun v -> v) in
+                let v = force t (fun v -> t := Value v; v) in
                 begin match v with
                   | VInt i' ->
                       i = i'
                   | _ -> false
                 end
             | EBool b ->
-                let v = force t (fun v -> v) in
+                let v = force t (fun v -> t := Value v; v) in
                 begin match v with
                   | VBool b' -> b = b'
                   | _ -> false
                 end
             | ENil ->
-                let v = force t (fun v -> v) in
+                let v = force t (fun v -> t := Value v; v) in
                 begin match v with
                   | VNil -> true
                   | _ -> false
                 end
             | EBinOp (Cons, hd, tl) ->
-                let v = force t (fun v -> v) in
+                let v = force t (fun v -> t := Value v; v) in
                 begin match v with
                   | VCons (thd, ttl) ->
                       can_eval_guard hd thd && can_eval_guard tl ttl
