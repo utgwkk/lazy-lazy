@@ -13,6 +13,7 @@
 %token LLPAREN RLPAREN SEMI
 %token PLUS MULT LT CONS
 %token MATCH WITH PIPE
+%token COMMA
 %token UNDEFINED
 
 %token <int> INTV
@@ -42,6 +43,7 @@ Expr :
   | TRUE { EBool true }
   | FALSE { EBool false }
   | list_expr { $1 }
+  | tuple_expr { $1 }
   | UNDEFINED { EUndefined }
   | Expr Expr %prec application { EApp ($1, $2) }
   | Expr PLUS Expr { EBinOp (Plus, $1, $3) }
@@ -102,6 +104,12 @@ list_expr :
 list_body :
   | SEMI Expr { $2 }
 
+tuple_expr :
+  | LPAREN e=Expr COMMA es=separated_nonempty_list(COMMA, Expr) RPAREN
+    {
+      ETuple (e :: es)
+    }
+
 match_guard :
   | PIPE p=match_pattern RARROW e=Expr { (p, e) }
 
@@ -111,6 +119,7 @@ match_pattern :
   | TRUE { EBool true }
   | FALSE { EBool false }
   | match_list_expr { $1 }
+  | match_tuple_expr { $1 }
   | hd=match_pattern CONS tl=match_pattern { EBinOp (Cons, hd, tl) }
   | LPAREN match_pattern RPAREN { $2 }
 
@@ -124,3 +133,9 @@ match_list_expr :
 
 match_list_body :
   | SEMI match_pattern { $2 }
+
+match_tuple_expr :
+  | LPAREN e=match_pattern COMMA es=separated_nonempty_list(COMMA, match_pattern) RPAREN
+    {
+      ETuple (e :: es)
+    }

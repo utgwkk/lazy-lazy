@@ -6,6 +6,7 @@ type value =
   | VProc of id * exp * value Env.t ref
   | VNil
   | VCons of value * value
+  | VTuple of value list
   | VUndefined
 
 let rec string_of_value = function
@@ -20,6 +21,11 @@ let rec string_of_value = function
         | _ ->
             Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
       end
+  | VTuple vs ->
+      vs
+      |> List.map string_of_value
+      |> String.concat ", "
+      |> Printf.sprintf "(%s)"
   | VUndefined -> "undefined"
 
 exception Error of string
@@ -96,6 +102,17 @@ let rec eval env exp k = match exp with
                   Env.union (fun k a b -> Some a) env_hd env_tl
               | _ -> runtime_error ("not a list: " ^ string_of_value v)
             end
+        | ETuple es ->
+            begin match v with
+              | VTuple vs ->
+                if List.length es != List.length vs then
+                  runtime_error ("tuple size not match")
+                else
+                  List.combine vs es
+                  |> List.map (fun (v, e) -> destruct_value_to_env v e)
+                  |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
+              | _ -> runtime_error ("not a tuple: " ^ string_of_value v)
+            end
         | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
       in
       let rec can_eval_guard p v = match p with
@@ -121,6 +138,15 @@ let rec eval env exp k = match exp with
                   can_eval_guard hd vhd && can_eval_guard tl vtl
               | _ -> false
             end
+        | ETuple es ->
+            begin match v with
+              | VTuple vs ->
+                  if List.length es != List.length vs then false
+                  else
+                    List.combine es vs
+                    |> List.for_all (fun (e, v) -> can_eval_guard e v)
+              | _ -> false
+            end
         | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
       in
       eval env e1 (fun v1 ->
@@ -131,6 +157,17 @@ let rec eval env exp k = match exp with
                 |> Env.union (fun k a b -> Some b) env
               in eval env' e (fun v2 -> k v2)
           | None -> runtime_error "match failure"
+      )
+  | ETuple es ->
+      let rec fold_eval f a xs k = match xs with
+        | [] -> k a
+        | eh :: et ->
+            eval env eh (fun vh ->
+              fold_eval f (f a vh) et k
+            )
+      in
+      fold_eval (fun x y -> x @ [y]) [] es (fun vs ->
+        k (VTuple vs)
       )
 
 let start exp =
