@@ -30,7 +30,9 @@ rule main = parse
   | ")" { RPAREN }
   | ";;" { SEMISEMI }
   | "->" { RARROW }
-  | "[]" { NIL }
+  | "[" { LLPAREN }
+  | "]" { RLPAREN }
+  | ";" { SEMI }
   | "::" { CONS }
   | "|" { PIPE }
   | "=" { EQ }

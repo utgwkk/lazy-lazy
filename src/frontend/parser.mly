@@ -10,7 +10,7 @@
 %token EQ
 %token FUN
 %token RARROW
-%token NIL
+%token LLPAREN RLPAREN SEMI
 %token PLUS MULT LT CONS
 %token MATCH WITH PIPE
 %token UNDEFINED
@@ -26,7 +26,7 @@
 %right CONS
 %left PLUS
 %left MULT
-%nonassoc LPAREN ID INTV TRUE FALSE NIL UNDEFINED
+%nonassoc LPAREN ID INTV TRUE FALSE LLPAREN UNDEFINED
 %nonassoc application
 
 %start main
@@ -41,7 +41,7 @@ Expr :
   | INTV { EInt $1 }
   | TRUE { EBool true }
   | FALSE { EBool false }
-  | NIL { ENil }
+  | list_expr { $1 }
   | UNDEFINED { EUndefined }
   | Expr Expr %prec application { EApp ($1, $2) }
   | Expr PLUS Expr { EBinOp (Plus, $1, $3) }
@@ -91,6 +91,17 @@ bioper_fun :
   | LPAREN MULT RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Mult, EVar "##LHS##", EVar "##RHS##"))) }
   | LPAREN LT RPAREN { EAbs ("##LHS##", EAbs ("##RHS##", EBinOp (Lt, EVar "##LHS##", EVar "##RHS##"))) }
 
+list_expr :
+  | LLPAREN RLPAREN { ENil }
+  | LLPAREN e=Expr xs=list(list_body) RLPAREN {
+      List.fold_right (fun car cdr ->
+        EBinOp (Cons, car, cdr)
+      ) xs e
+    }
+
+list_body :
+  | SEMI Expr { $2 }
+
 match_guard :
   | PIPE p=match_pattern RARROW e=Expr { (p, e) }
 
@@ -99,6 +110,17 @@ match_pattern :
   | INTV { EInt $1 }
   | TRUE { EBool true }
   | FALSE { EBool false }
-  | NIL { ENil }
+  | match_list_expr { $1 }
   | hd=match_pattern CONS tl=match_pattern { EBinOp (Cons, hd, tl) }
   | LPAREN match_pattern RPAREN { $2 }
+
+match_list_expr :
+  | LLPAREN RLPAREN { ENil }
+  | LLPAREN e=Expr xs=list(match_list_body) RLPAREN {
+      List.fold_right (fun car cdr ->
+        EBinOp (Cons, car, cdr)
+      ) xs e
+    }
+
+match_list_body :
+  | SEMI match_pattern { $2 }
