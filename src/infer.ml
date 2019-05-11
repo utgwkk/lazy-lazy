@@ -36,32 +36,30 @@ let rec occurs tv = function
 exception Unify_failed of string
 let unify_failed s = raise (Unify_failed s)
 
-let unify eqs =
-  let rec unify solved = function
-  | [] -> solved
+let rec unify = function
+  | [] -> []
   | (t1, t2) :: tl ->
-      if t1 = t2 then unify solved tl
+      if t1 = t2 then unify tl
       else match (t1, t2) with
         | TFun (t11, t12), TFun (t21, t22) ->
-            unify solved ((t11, t21) :: (t12, t22) :: tl)
+            unify ((t11, t21) :: (t12, t22) :: tl)
         | TList t1, TList t2 ->
-            unify solved ((t1, t2) :: tl)
+            unify ((t1, t2) :: tl)
         | TTuple ts1, TTuple ts2 ->
             if List.length ts1 != List.length ts2 then
               unify_failed ("Size of tuple unmatch")
             else
               let eqs' = List.combine ts1 ts2 in
-              unify solved (eqs' @ tl)
+              unify (eqs' @ tl)
         | TVar tv, t ->
             if occurs tv t then
               unify_failed ("Type variable " ^ string_of_int tv ^ " occurs.")
             else
               let tl' = subst_eqs [(tv, t)] tl in
-              unify ((tv, t) :: solved) tl'
+              (tv, t) :: unify tl'
         | t, TVar tv ->
-            unify solved ((TVar tv, t) :: tl)
+            unify ((TVar tv, t) :: tl)
         | _ -> unify_failed "Type mismatch"
-  in unify [] eqs
 
 let fresh_tyvar =
   let counter = ref 0 in
