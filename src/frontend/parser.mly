@@ -96,7 +96,7 @@ list_expr :
   | LLPAREN e=Expr xs=list(list_body) RLPAREN {
       List.fold_right (fun car cdr ->
         EBinOp (Cons, car, cdr)
-      ) xs e
+      ) (e :: xs) ENil
     }
 
 list_body :
@@ -119,7 +119,7 @@ match_list_expr :
   | LLPAREN e=Expr xs=list(match_list_body) RLPAREN {
       List.fold_right (fun car cdr ->
         EBinOp (Cons, car, cdr)
-      ) xs e
+      ) (e :: xs) ENil
     }
 
 match_list_body :
