@@ -154,22 +154,40 @@ let rec infer tyenv = function
       let tyenv'' = Env.add x tysc1 tyenv in
       let (s2, t2) = infer tyenv'' e2 in
       (s2, t2)
-  | EMatchWith (e1, enil, xcar, xcdr, econs) ->
+  | EMatchWith (e1, guards) ->
+      (* ty -> exp -> eqs * tyenv *)
+      let rec pattern t = function
+        | EVar x -> ([], Env.singleton x (tysc_of_ty t))
+        | EInt _ -> ([(t, TInt)], Env.empty)
+        | EBool _ -> ([(t, TBool)], Env.empty)
+        | ENil ->
+            let tv = TVar (fresh_tyvar ()) in
+            ([(t, TList tv)], Env.empty)
+        | EBinOp (Cons, hd, tl) ->
+            let tv = TVar (fresh_tyvar ()) in
+            let (eqs_hd, tyenv_hd) = pattern tv hd in
+            let (eqs_tl, tyenv_tl) = pattern (TList tv) tl in
+            let tyenv' =
+              Env.union (fun _ _ b -> Some b) tyenv_hd tyenv_tl
+            in
+            let eqs = [(t, TList tv)] @ eqs_hd @ eqs_tl in
+            (eqs, tyenv')
+        | e -> failwith ("invalid pattern: " ^ string_of_exp e)
+      in
       let (s1, t1) = infer tyenv e1 in
-      let (snil, tnil) = infer tyenv enil in
-      let th = TVar (fresh_tyvar ()) in
-      let tyenv' =
-        tyenv
-        |> Env.add xcar (tysc_of_ty th)
-        |> Env.add xcdr (tysc_of_ty (TList th))
-      in
-      let (scons, tcons) = infer tyenv' econs in
-      let eqs =
-        [(t1, TList th); (tnil, tcons)]
-        @ eqs_of_subst s1 @ eqs_of_subst snil @ eqs_of_subst scons
-      in
-      let s = unify eqs in
-      (s, subst_ty s tnil)
+      let tv = TVar (fresh_tyvar ()) in
+      List.fold_left (fun (s, t) (p, e) ->
+        let (eqs, tyenv') = pattern t1 p in
+        let tyenv'' =
+          Env.union (fun _ _ b -> Some b) tyenv tyenv'
+        in
+        let (s', t') = infer tyenv'' e in
+        let eqs' =
+          [(t', t)] @ eqs @ eqs_of_subst s @ eqs_of_subst s'
+        in
+        let s'' = unify eqs' in
+        (s'', subst_ty s'' t')
+      ) (s1, tv) guards
 
 let start exp =
   infer Env.empty exp |> snd
