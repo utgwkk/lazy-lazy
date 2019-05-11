@@ -1,5 +1,7 @@
 type id = string
 
+let ignore_id = "_"
+
 type op =
   | Plus
   | Mult
@@ -18,7 +20,7 @@ type exp =
   | EAbs of id * exp
   | EApp of exp * exp
   | ELetRec of id * exp * exp
-  | EMatchWith of exp * exp * id * id * exp
+  | EMatchWith of exp * (exp * exp) list
 
 type tyvar = int
 
@@ -75,8 +77,13 @@ let rec string_of_exp = function
       Printf.sprintf "(%s %s)" (string_of_exp e1) (string_of_exp e2)
   | ELetRec (f, e1, e2) ->
       Printf.sprintf "(let-rec %s %s %s)" f (string_of_exp e1) (string_of_exp e2)
-  | EMatchWith (e1, enil, xcar, xcdr, econs) ->
-      Printf.sprintf "(match %s (() %s) ((%s . %s) %s))" (string_of_exp e1) (string_of_exp enil) xcar xcdr (string_of_exp econs)
+  | EMatchWith (e, guards) ->
+      let guards' =
+        guards
+        |> List.map (fun (p, e) -> Printf.sprintf "(%s %s)" (string_of_exp p) (string_of_exp e))
+        |> String.concat " "
+      in
+      Printf.sprintf "(match %s %s)" (string_of_exp e) guards'
 
 let rec string_of_ty = function
   | TInt -> "int"

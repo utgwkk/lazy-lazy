@@ -79,17 +79,58 @@ let rec eval env exp k = match exp with
       envr := env';
       eval env' e2 (fun v2 -> k v2)
   | ELetRec _ -> runtime_error "Recursive variable is not allowed in strict mode"
-  | EMatchWith (e1, enil, xcar, xcdr, econs) ->
-      eval env e1 (function
-        | VNil -> eval env enil (fun vnil -> k vnil)
-        | VCons (vcar, vcdr) ->
-            let env' =
-              env
-              |> Env.add xcar vcar
-              |> Env.add xcdr vcdr
-            in
-            eval env' econs (fun vcons -> k vcons)
-        | _ -> runtime_error "Not a list"
+  | EMatchWith (e1, guards) ->
+      (* value -> pat -> env *)
+      let rec destruct_value_to_env v = function
+        | EVar x ->
+            if x = ignore_id then Env.empty
+            else Env.singleton x v
+        | EInt _
+        | EBool _
+        | ENil -> Env.empty
+        | EBinOp (Cons, hd, tl) ->
+            begin match v with
+              | VCons (vhd, vtl) ->
+                  let env_hd = destruct_value_to_env vhd hd in
+                  let env_tl = destruct_value_to_env vtl tl in
+                  Env.union (fun k a b -> Some a) env_hd env_tl
+              | _ -> runtime_error ("not a list: " ^ string_of_value v)
+            end
+        | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
+      in
+      let rec can_eval_guard p v = match p with
+        | EVar x -> true
+        | EInt i ->
+            begin match v with
+              | VInt i' -> i = i'
+              | _ -> false
+            end
+        | EBool b ->
+            begin match v with
+              | VBool b' -> b = b'
+              | _ -> false
+            end
+        | ENil ->
+            begin match v with
+              | VNil -> true
+              | _ -> false
+            end
+        | EBinOp (Cons, hd, tl) ->
+            begin match v with
+              | VCons (vhd, vtl) ->
+                  can_eval_guard hd vhd && can_eval_guard tl vtl
+              | _ -> false
+            end
+        | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
+      in
+      eval env e1 (fun v1 ->
+        match List.find_opt (fun (p, _) -> can_eval_guard p v1) guards with
+          | Some (p, e) ->
+              let env' =
+                destruct_value_to_env v1 p
+                |> Env.union (fun k a b -> Some b) env
+              in eval env' e (fun v2 -> k v2)
+          | None -> runtime_error "match failure"
       )
 
 let start exp =

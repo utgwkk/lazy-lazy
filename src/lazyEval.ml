@@ -24,7 +24,7 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | (Lt, VInt i1, VInt i2) -> k (VBool (i1 < i2))
   | _ -> runtime_error "binop"
 
-let rec force t (k : value -> 'a) =
+let rec force t k =
   let k v = t := Value v; k v in
   let p = !t in match p with
   | Promise (e, env) ->
@@ -118,32 +118,71 @@ let rec force t (k : value -> 'a) =
               )
             )
           )
-      | EMatchWith (e1, enil, xcar, xcdr, econs) ->
+      | EMatchWith (e1, guards) ->
+          (* promise -> pat -> env *)
+          let rec destruct_promise_to_env p = function
+            | EVar x ->
+                if x = ignore_id then Env.empty
+                else Env.singleton x (ref p)
+            | EInt _
+            | EBool _
+            | ENil -> Env.empty
+            | EBinOp (Cons, hd, tl) ->
+                begin match p with
+                  | Value (VCons (thd, ttl)) ->
+                      let env_hd = destruct_promise_to_env !thd hd in
+                      let env_tl = destruct_promise_to_env !ttl tl in
+                      Env.union (fun k a b -> Some a) env_hd env_tl
+                  | _ -> runtime_error ("not a list")
+                end
+            | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
+          in
+          let rec can_eval_guard p t = match p with
+            | EVar x -> true
+            | EInt i ->
+                let v = force t (fun v -> v) in
+                begin match v with
+                  | VInt i' ->
+                      i = i'
+                  | _ -> false
+                end
+            | EBool b ->
+                let v = force t (fun v -> v) in
+                begin match v with
+                  | VBool b' -> b = b'
+                  | _ -> false
+                end
+            | ENil ->
+                let v = force t (fun v -> v) in
+                begin match v with
+                  | VNil -> true
+                  | _ -> false
+                end
+            | EBinOp (Cons, hd, tl) ->
+                let v = force t (fun v -> v) in
+                begin match v with
+                  | VCons (thd, ttl) ->
+                      can_eval_guard hd thd && can_eval_guard tl ttl
+                  | _ -> false
+                end
+            | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
+          in
           eval env e1 (fun t1 ->
             force t1 (fun v1 ->
               t1 := Value v1;
-              match v1 with
-              | VNil ->
-                  eval env enil (fun tnil ->
-                    force tnil (fun vnil ->
-                      tnil := Value vnil;
-                      k vnil
+              match List.find_opt (fun (p, _) -> can_eval_guard p t1) guards with
+                | Some (p, e) ->
+                    let env' =
+                      destruct_promise_to_env !t1 p
+                      |> Env.union (fun k a b -> Some b) env
+                    in
+                    eval env' e (fun t ->
+                      force t (fun v ->
+                        t := Value v;
+                        k v
+                      )
                     )
-                  )
-              | VCons (tcar, tcdr) ->
-                  let env' =
-                    env
-                    |> Env.add xcar tcar
-                    |> Env.add xcdr tcdr
-                  in
-                  eval env' econs (fun tcons ->
-                    force tcons (fun vcons ->
-                      tcons := Value vcons;
-                      k vcons
-                    )
-                  )
-              | VUndefined -> VUndefined
-              | _ -> runtime_error "Not a list."
+                | None -> runtime_error "match failure"
             )
           )
     end
@@ -180,8 +219,8 @@ and eval env exp k = match exp with
         t := !t1;
         eval env' e2 (fun t2 -> k t2)
       )
-  | EMatchWith (e1, enil, xcar, xcdr, xcons) ->
-      k (ref (Promise (EMatchWith (e1, enil, xcar, xcdr, xcons), env)))
+  | EMatchWith (e1, guards) ->
+      k (ref (Promise (EMatchWith (e1, guards), env)))
 
 let rec string_of_value = function
   | VInt i -> string_of_int i

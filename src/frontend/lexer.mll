@@ -21,7 +21,7 @@ let small = ['a'-'z']
 let capital = ['A'-'Z']
 let digit = ['0'-'9']
 let number = digit+
-let ident = small (capital | small | digit | ['_' '\''])*
+let ident = '_' | small (capital | small | digit | ['_' '\''])*
 
 rule main = parse
   | [' ' '\009' '\012' '\n']+     { main lexbuf }
