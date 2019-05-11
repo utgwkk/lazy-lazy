@@ -33,6 +33,7 @@ rule main = parse
   | "[" { LLPAREN }
   | "]" { RLPAREN }
   | ";" { SEMI }
+  | "," { COMMA }
   | "::" { CONS }
   | "|" { PIPE }
   | "=" { EQ }

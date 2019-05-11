@@ -21,6 +21,7 @@ type exp =
   | EApp of exp * exp
   | ELetRec of id * exp * exp
   | EMatchWith of exp * (exp * exp) list
+  | ETuple of exp list
 
 type tyvar = int
 
@@ -30,6 +31,7 @@ type ty =
   | TVar of tyvar
   | TFun of ty * ty
   | TList of ty
+  | TTuple of ty list
 
 type tysc = TScheme of tyvar list * ty
 let tysc_of_ty ty = TScheme ([], ty)
@@ -47,6 +49,10 @@ let rec ftv = function
   | TVar tv -> TV.singleton tv
   | TFun (t1, t2) -> TV.union (ftv t1) (ftv t2)
   | TList t -> ftv t
+  | TTuple ts ->
+      ts
+      |> List.map ftv
+      |> List.fold_left TV.union TV.empty
 
 let ftv_tysc (TScheme (vars, ty)) =
   TV.diff (ftv ty) (TV.of_list vars)
@@ -84,6 +90,13 @@ let rec string_of_exp = function
         |> String.concat " "
       in
       Printf.sprintf "(match %s %s)" (string_of_exp e) guards'
+  | ETuple es ->
+      let es' =
+        es
+        |> List.map string_of_exp
+        |> String.concat " "
+      in
+      Printf.sprintf "(tuple (%s))" es'
 
 let large_ty = function
   | TInt
@@ -91,6 +104,7 @@ let large_ty = function
   | TVar _
   | TList _ -> false
   | TFun _ -> true
+  | TTuple _ -> true
 
 let rec string_of_ty = function
   | TInt -> "int"
@@ -105,6 +119,13 @@ let rec string_of_ty = function
       if large_ty t then
         Printf.sprintf "(%s) list" (string_of_ty t)
       else string_of_ty t ^ " list"
+  | TTuple ts ->
+      ts
+      |> List.map (fun t ->
+          if large_ty t then "(" ^ string_of_ty t ^ ")"
+          else string_of_ty t
+        )
+      |> String.concat " * "
 
 let pp_ty ty =
   let rec tvs = function
@@ -113,6 +134,9 @@ let pp_ty ty =
     | TVar tv -> TV.singleton tv
     | TFun (t1, t2) -> TV.union (tvs t1) (tvs t2)
     | TList t -> tvs t
+    | TTuple ts ->
+        List.map tvs ts
+        |> List.fold_left TV.union TV.empty
   in
   let tv_map =
     tvs ty
@@ -133,4 +157,11 @@ let pp_ty ty =
         if large_ty t then
           Printf.sprintf "(%s) list" (string_of_ty t)
         else string_of_ty t ^ " list"
+    | TTuple ts ->
+        ts
+        |> List.map (fun t ->
+            if large_ty t then "(" ^ string_of_ty t ^ ")"
+            else string_of_ty t
+          )
+        |> String.concat " * "
   in string_of_ty ty
