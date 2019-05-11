@@ -20,8 +20,7 @@
 %token <Syntax.id> ID
 
 %right RARROW
-%nonassoc LET FUN IF
-%right MATCH
+%nonassoc LET FUN IF MATCH
 %right let_exp fun_exp if_exp
 %left LT
 %right CONS
@@ -80,10 +79,9 @@ Expr :
         ) xs e
       in e'
     }
-  | MATCH e=Expr WITH option(PIPE) p1=match_pattern RARROW e1=Expr gs=list(match_guard)
+  | MATCH e=Expr WITH option(PIPE) gs=separated_nonempty_list(PIPE, match_guard)
     {
-      let gs' = (p1, e1) :: gs in
-      EMatchWith (e, gs')
+      EMatchWith (e, gs)
     }
   | bioper_fun { $1 }
   | LPAREN Expr RPAREN { $2 }
@@ -107,7 +105,7 @@ tuple_expr :
     }
 
 match_guard :
-  | PIPE p=match_pattern RARROW e=Expr { (p, e) }
+  | p=match_pattern RARROW e=Expr { (p, e) }
 
 match_pattern :
   | ID { EVar $1 }
