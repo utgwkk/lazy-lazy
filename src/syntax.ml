@@ -1,5 +1,7 @@
 type id = string
 
+let ignore_id = "_"
+
 type op =
   | Plus
   | Mult
