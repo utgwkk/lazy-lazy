@@ -7,6 +7,7 @@ type value =
   | VNil
   | VCons of thunk * thunk
   | VUndefined
+  | VTuple of thunk list
 
 and promise =
   | Promise of exp * thunk Env.t
@@ -135,6 +136,17 @@ let rec force t k =
                       Env.union (fun k a b -> Some a) env_hd env_tl
                   | _ -> runtime_error ("not a list")
                 end
+            | ETuple es ->
+                begin match p with
+                  | Value (VTuple ts) ->
+                    if List.length es != List.length ts then
+                      runtime_error ("tuple size not match")
+                    else
+                      List.combine ts es
+                      |> List.map (fun (t, e) -> destruct_promise_to_env !t e)
+                      |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
+                  | _ -> runtime_error ("not a tuple")
+                end
             | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
           in
           let rec can_eval_guard p t = match p with
@@ -165,6 +177,16 @@ let rec force t k =
                       can_eval_guard hd thd && can_eval_guard tl ttl
                   | _ -> false
                 end
+            | ETuple es ->
+                let v = force t (fun v -> t := Value v; v) in
+                begin match v with
+                  | VTuple vs ->
+                      if List.length es != List.length vs then false
+                      else
+                        List.combine es vs
+                        |> List.for_all (fun (e, v) -> can_eval_guard e v)
+                  | _ -> false
+                end
             | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
           in
           eval env e1 (fun t1 ->
@@ -184,6 +206,17 @@ let rec force t k =
                     )
                 | None -> runtime_error "match failure"
             )
+          )
+      | ETuple es ->
+          let rec fold_eval f a xs k = match xs with
+            | [] -> k a
+            | eh :: et ->
+                eval env eh (fun th ->
+                  fold_eval f (f a th) et k
+                )
+          in
+          fold_eval (fun x y -> x @ [y]) [] es (fun ts ->
+            k (VTuple ts)
           )
     end
   | Value v -> k v
@@ -221,6 +254,8 @@ and eval env exp k = match exp with
       )
   | EMatchWith (e1, guards) ->
       k (ref (Promise (EMatchWith (e1, guards), env)))
+  | ETuple es ->
+      k (ref (Promise (ETuple es, env)))
 
 let rec string_of_value = function
   | VInt i -> string_of_int i
@@ -236,6 +271,14 @@ let rec string_of_value = function
         | _ ->
             Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
       end
+  | VTuple ts ->
+      let vs' =
+        ts
+        |> List.map (fun t -> force t (fun v -> t := Value v; v))
+        |> List.map string_of_value
+        |> String.concat ", "
+      in
+      Printf.sprintf "(%s)" vs'
   | VUndefined -> "undefined"
 
 let start exp =

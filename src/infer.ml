@@ -12,6 +12,8 @@ let subst_ty subs t =
     | TFun (t1, t2) ->
         TFun (subst_ty (tv, t) t1, subst_ty (tv, t) t2)
     | TList t' -> TList (subst_ty (tv, t) t')
+    | TTuple ts ->
+        TTuple (List.map (subst_ty (tv, t)) ts)
   in
   List.fold_left (fun t s -> subst_ty s t) t subs
 
@@ -28,6 +30,8 @@ let rec occurs tv = function
   | TFun (t1, t2) ->
       occurs tv t1 || occurs tv t2
   | TList t -> occurs tv t
+  | TTuple ts ->
+      List.exists (occurs tv) ts
 
 exception Unify_failed of string
 let unify_failed s = raise (Unify_failed s)
@@ -41,6 +45,12 @@ let rec unify = function
             unify ((t11, t21) :: (t12, t22) :: tl)
         | TList t1, TList t2 ->
             unify ((t1, t2) :: tl)
+        | TTuple ts1, TTuple ts2 ->
+            if List.length ts1 != List.length ts2 then
+              unify_failed ("Size of tuple unmatch")
+            else
+              let eqs' = List.combine ts1 ts2 in
+              unify (eqs' @ tl)
         | TVar tv, t ->
             if occurs tv t then
               unify_failed ("Type variable " ^ string_of_int tv ^ " occurs.")
@@ -176,6 +186,20 @@ let rec infer tyenv = function
             in
             let eqs = [(t, TList tv)] @ eqs_hd @ eqs_tl in
             (eqs, tyenv')
+        | ETuple es ->
+            let (eqs, tyenv, ts) =
+              List.fold_left (fun (eqs, tyenv, ts) e ->
+                let tv = TVar (fresh_tyvar ()) in
+                let (eqs', tyenv') = pattern tv e in
+                (
+                  eqs @ eqs', Env.union (fun k _ _ ->
+                    infer_failed ("the variable " ^ k ^ " occurs twice in pattern-match expression")
+                  ) tyenv tyenv', ts @ [tv]
+                )
+              ) ([], Env.empty, []) es
+            in
+            let eqs' = [(t, TTuple ts)] @ eqs in
+            (eqs', tyenv)
         | e -> failwith ("invalid pattern: " ^ string_of_exp e)
       in
       let (s1, t1) = infer tyenv e1 in
@@ -192,6 +216,14 @@ let rec infer tyenv = function
         let s'' = unify eqs' in
         (s'', subst_ty s'' t')
       ) (s1, tv) guards
+  | ETuple es ->
+      let (s, ts) =
+        List.fold_left (fun (s, ts) e ->
+          let (s', t) = infer tyenv e in
+          (s @ s', ts @ [t])
+        ) ([], []) es
+      in
+      (s, TTuple ts)
 
 let start exp =
   infer Env.empty exp |> snd
