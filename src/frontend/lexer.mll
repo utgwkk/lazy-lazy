@@ -48,4 +48,13 @@ rule main = parse
       with
       _ -> Parser.ID id
     }
+  | "(*" { comment 0 lexbuf }
 	| eof { exit 0 }
+
+and comment nest = parse
+  | "*)" {
+      if nest < 1 then main lexbuf
+      else comment (nest - 1) lexbuf
+    }
+  | "(*" { comment (nest + 1) lexbuf }
+  | _ { comment nest lexbuf }
