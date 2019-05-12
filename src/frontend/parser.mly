@@ -105,28 +105,28 @@ tuple_expr :
     }
 
 match_guard :
-  | p=match_pattern RARROW e=Expr
+  | p=pattern RARROW e=Expr
     %prec match_guard_p { (p, e) }
 
-match_pattern :
+pattern :
   | ID { EVar $1 }
   | INTV { EInt $1 }
   | TRUE { EBool true }
   | FALSE { EBool false }
-  | match_list_expr { $1 }
-  | match_tuple_expr { $1 }
-  | hd=match_pattern CONS tl=match_pattern { EBinOp (Cons, hd, tl) }
-  | LPAREN match_pattern RPAREN { $2 }
+  | list_pattern { $1 }
+  | tuple_pattern { $1 }
+  | hd=pattern CONS tl=pattern { EBinOp (Cons, hd, tl) }
+  | LPAREN pattern RPAREN { $2 }
 
-match_list_expr :
-  | LLPAREN xs=separated_list(SEMI, match_pattern) RLPAREN {
+list_pattern :
+  | LLPAREN xs=separated_list(SEMI, pattern) RLPAREN {
       List.fold_right (fun car cdr ->
         EBinOp (Cons, car, cdr)
       ) xs ENil
     }
 
-match_tuple_expr :
-  | LPAREN e=match_pattern COMMA es=separated_nonempty_list(COMMA, match_pattern) RPAREN
+tuple_pattern :
+  | LPAREN e=pattern COMMA es=separated_nonempty_list(COMMA, pattern) RPAREN
     {
       ETuple (e :: es)
     }
