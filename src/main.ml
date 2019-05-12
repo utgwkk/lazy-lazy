@@ -9,7 +9,7 @@ let if_verbose f = if !verbose then f ()
 
 let do_benchmark exp =
   let iteration = 100000L in
-  [
+  ignore ([
     Benchmark.latency1 iteration ~name:"type_inference" Infer.start exp;
     (
       if !strict_eval then
@@ -17,9 +17,7 @@ let do_benchmark exp =
       else
         Benchmark.latency1 iteration ~name:"lazy_evaluation" LazyEval.start exp
     );
-  ]
-  |> List.fold_left Benchmark.merge []
-  |> Benchmark.tabulate
+  ])
 
 let rec repl prompt chan k =
   print_string prompt;
