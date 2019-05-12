@@ -91,6 +91,51 @@ let closure ty tyenv subst =
 exception Infer_failed of string
 let infer_failed s = raise (Infer_failed s)
 
+let reject_same_id k _ _ =
+  infer_failed ("the variable " ^ k ^ " occurs twice in pattern-match expression")
+
+(* ty -> exp -> subst * tyenv *)
+let rec pattern t = function
+  | EVar x ->
+      if x = ignore_id then ([], Env.empty)
+      else ([], Env.singleton x (tysc_of_ty t))
+  | EInt _ ->
+      let s = unify [(t, TInt)] in
+      (s, Env.empty)
+  | EBool _ ->
+      let s = unify [(t, TBool)] in
+      (s, Env.empty)
+  | ENil ->
+      let tv = TVar (fresh_tyvar ()) in
+      let s = unify [(t, TList tv)] in
+      (s, Env.empty)
+  | EBinOp (Cons, hd, tl) ->
+      let tv = TVar (fresh_tyvar ()) in
+      let (s_hd, tyenv_hd) = pattern tv hd in
+      let (s_tl, tyenv_tl) = pattern (TList tv) tl in
+      let tyenv' =
+        Env.union reject_same_id tyenv_hd tyenv_tl
+      in
+      let eqs = merge_eqs [[(t, TList tv)]; eqs_of_subst s_hd; eqs_of_subst s_tl] in
+      let s = unify eqs in
+      (s, tyenv')
+  | ETuple es ->
+      let (s, tyenv, tsr) =
+        List.fold_left (fun (s, tyenv, tsr) e ->
+          let tv = TVar (fresh_tyvar ()) in
+          let (s', tyenv') = pattern tv e in
+          (
+            s @ s',
+            Env.union reject_same_id tyenv tyenv', tv :: tsr
+          )
+        ) ([], Env.empty, []) es
+      in
+      let ts = List.rev tsr in
+      let eqs = merge_eqs [[(t, TTuple ts)]; eqs_of_subst s] in
+      let s' = unify eqs in
+      (s', tyenv)
+  | e -> failwith ("invalid pattern: " ^ string_of_exp e)
+
 let infer_op op t1 t2 = match op with
   | Plus -> ([(t1, TInt); (t2, TInt)], TInt)
   | Mult -> ([(t1, TInt); (t2, TInt)], TInt)
@@ -169,51 +214,6 @@ let rec infer tyenv = function
       let (s2, t2) = infer tyenv'' e2 in
       (s2, t2)
   | EMatchWith (e1, guards) ->
-      let reject_same_id k _ _ =
-        infer_failed ("the variable " ^ k ^ " occurs twice in pattern-match expression")
-      in
-      (* ty -> exp -> subst * tyenv *)
-      let rec pattern t = function
-        | EVar x ->
-            if x = ignore_id then ([], Env.empty)
-            else ([], Env.singleton x (tysc_of_ty t))
-        | EInt _ ->
-            let s = unify [(t, TInt)] in
-            (s, Env.empty)
-        | EBool _ ->
-            let s = unify [(t, TBool)] in
-            (s, Env.empty)
-        | ENil ->
-            let tv = TVar (fresh_tyvar ()) in
-            let s = unify [(t, TList tv)] in
-            (s, Env.empty)
-        | EBinOp (Cons, hd, tl) ->
-            let tv = TVar (fresh_tyvar ()) in
-            let (s_hd, tyenv_hd) = pattern tv hd in
-            let (s_tl, tyenv_tl) = pattern (TList tv) tl in
-            let tyenv' =
-              Env.union reject_same_id tyenv_hd tyenv_tl
-            in
-            let eqs = merge_eqs [[(t, TList tv)]; eqs_of_subst s_hd; eqs_of_subst s_tl] in
-            let s = unify eqs in
-            (s, tyenv')
-        | ETuple es ->
-            let (s, tyenv, tsr) =
-              List.fold_left (fun (s, tyenv, tsr) e ->
-                let tv = TVar (fresh_tyvar ()) in
-                let (s', tyenv') = pattern tv e in
-                (
-                  s @ s',
-                  Env.union reject_same_id tyenv tyenv', tv :: tsr
-                )
-              ) ([], Env.empty, []) es
-            in
-            let ts = List.rev tsr in
-            let eqs = merge_eqs [[(t, TTuple ts)]; eqs_of_subst s] in
-            let s' = unify eqs in
-            (s', tyenv)
-        | e -> failwith ("invalid pattern: " ^ string_of_exp e)
-      in
       let (s1, t1) = infer tyenv e1 in
       let tv = TVar (fresh_tyvar ()) in
       List.fold_left (fun (s, t) (p, e) ->
