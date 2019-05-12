@@ -25,6 +25,35 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | (Lt, VInt i1, VInt i2) -> k (VBool (i1 < i2))
   | _ -> runtime_error "binop"
 
+(* thunk -> pat -> env *)
+let rec destruct_thunk_to_env t = function
+  | EVar x ->
+      if x = ignore_id then Env.empty
+      else Env.singleton x t
+  | EInt _
+  | EBool _
+  | ENil -> Env.empty
+  | EBinOp (Cons, hd, tl) ->
+      begin match !t with
+        | Value (VCons (thd, ttl)) ->
+            let env_hd = destruct_thunk_to_env thd hd in
+            let env_tl = destruct_thunk_to_env ttl tl in
+            Env.union (fun k a b -> Some a) env_hd env_tl
+        | _ -> runtime_error ("not a list")
+      end
+  | ETuple es ->
+      begin match !t with
+        | Value (VTuple ts) ->
+          if List.length es != List.length ts then
+            runtime_error ("tuple size not match")
+          else
+            List.combine ts es
+            |> List.map (fun (t, e) -> destruct_thunk_to_env t e)
+            |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
+        | _ -> runtime_error ("not a tuple")
+      end
+  | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
+
 let rec force t k =
   let k v = t := Value v; k v in
   let p = !t in match p with
@@ -120,75 +149,6 @@ let rec force t k =
             )
           )
       | EMatchWith (e1, guards) ->
-          (* thunk -> pat -> env *)
-          let rec destruct_thunk_to_env t = function
-            | EVar x ->
-                if x = ignore_id then Env.empty
-                else Env.singleton x t
-            | EInt _
-            | EBool _
-            | ENil -> Env.empty
-            | EBinOp (Cons, hd, tl) ->
-                begin match !t with
-                  | Value (VCons (thd, ttl)) ->
-                      let env_hd = destruct_thunk_to_env thd hd in
-                      let env_tl = destruct_thunk_to_env ttl tl in
-                      Env.union (fun k a b -> Some a) env_hd env_tl
-                  | _ -> runtime_error ("not a list")
-                end
-            | ETuple es ->
-                begin match !t with
-                  | Value (VTuple ts) ->
-                    if List.length es != List.length ts then
-                      runtime_error ("tuple size not match")
-                    else
-                      List.combine ts es
-                      |> List.map (fun (t, e) -> destruct_thunk_to_env t e)
-                      |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
-                  | _ -> runtime_error ("not a tuple")
-                end
-            | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
-          in
-          let rec can_eval_guard p t = match p with
-            | EVar x -> true
-            | EInt i ->
-                let v = force t (fun v -> t := Value v; v) in
-                begin match v with
-                  | VInt i' ->
-                      i = i'
-                  | _ -> false
-                end
-            | EBool b ->
-                let v = force t (fun v -> t := Value v; v) in
-                begin match v with
-                  | VBool b' -> b = b'
-                  | _ -> false
-                end
-            | ENil ->
-                let v = force t (fun v -> t := Value v; v) in
-                begin match v with
-                  | VNil -> true
-                  | _ -> false
-                end
-            | EBinOp (Cons, hd, tl) ->
-                let v = force t (fun v -> t := Value v; v) in
-                begin match v with
-                  | VCons (thd, ttl) ->
-                      can_eval_guard hd thd && can_eval_guard tl ttl
-                  | _ -> false
-                end
-            | ETuple es ->
-                let v = force t (fun v -> t := Value v; v) in
-                begin match v with
-                  | VTuple vs ->
-                      if List.length es != List.length vs then false
-                      else
-                        List.combine es vs
-                        |> List.for_all (fun (e, v) -> can_eval_guard e v)
-                  | _ -> false
-                end
-            | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
-          in
           eval env e1 (fun t1 ->
             force t1 (fun v1 ->
               t1 := Value v1;
@@ -221,6 +181,42 @@ let rec force t k =
     end
   | Value v -> k v
   | Exception -> VUndefined
+
+and can_eval_guard p t = match p with
+  | EVar x -> true
+  | EInt i ->
+      let v = force t (fun v -> t := Value v; v) in
+      begin match v with
+        | VInt i' -> i = i'
+        | _ -> false
+      end
+  | EBool b ->
+      let v = force t (fun v -> t := Value v; v) in
+      begin match v with
+        | VBool b' -> b = b'
+        | _ -> false
+      end
+  | ENil ->
+      let v = force t (fun v -> t := Value v; v) in
+      v = VNil
+  | EBinOp (Cons, hd, tl) ->
+      let v = force t (fun v -> t := Value v; v) in
+      begin match v with
+        | VCons (thd, ttl) ->
+            can_eval_guard hd thd && can_eval_guard tl ttl
+        | _ -> false
+      end
+  | ETuple es ->
+      let v = force t (fun v -> t := Value v; v) in
+      begin match v with
+        | VTuple vs ->
+            if List.length es != List.length vs then false
+            else
+              List.combine es vs
+              |> List.for_all (fun (e, v) -> can_eval_guard e v)
+        | _ -> false
+      end
+  | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
 
 and eval env exp k = match exp with
   | EVar x ->
