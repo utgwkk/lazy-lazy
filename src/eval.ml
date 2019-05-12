@@ -46,6 +46,69 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | (Cons, v1, v2) -> k (VCons (v1, v2))
   | _ -> runtime_error "binop"
 
+(* value -> pat -> env *)
+let rec destruct_value_to_env v = function
+  | EVar x ->
+      if x = ignore_id then Env.empty
+      else Env.singleton x v
+  | EInt _
+  | EBool _
+  | ENil -> Env.empty
+  | EBinOp (Cons, hd, tl) ->
+      begin match v with
+        | VCons (vhd, vtl) ->
+            let env_hd = destruct_value_to_env vhd hd in
+            let env_tl = destruct_value_to_env vtl tl in
+            Env.union (fun k a b -> Some a) env_hd env_tl
+        | _ -> runtime_error ("not a list: " ^ string_of_value v)
+      end
+  | ETuple es ->
+      begin match v with
+        | VTuple vs ->
+          if List.length es != List.length vs then
+            runtime_error ("tuple size not match")
+          else
+            List.combine vs es
+            |> List.map (fun (v, e) -> destruct_value_to_env v e)
+            |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
+        | _ -> runtime_error ("not a tuple: " ^ string_of_value v)
+      end
+  | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
+
+let rec can_eval_guard p v = match p with
+  | EVar x -> true
+  | EInt i ->
+      begin match v with
+        | VInt i' -> i = i'
+        | _ -> false
+      end
+  | EBool b ->
+      begin match v with
+        | VBool b' -> b = b'
+        | _ -> false
+      end
+  | ENil ->
+      begin match v with
+        | VNil -> true
+        | _ -> false
+      end
+  | EBinOp (Cons, hd, tl) ->
+      begin match v with
+        | VCons (vhd, vtl) ->
+            can_eval_guard hd vhd && can_eval_guard tl vtl
+        | _ -> false
+      end
+  | ETuple es ->
+      begin match v with
+        | VTuple vs ->
+            if List.length es != List.length vs then false
+            else
+              List.combine es vs
+              |> List.for_all (fun (e, v) -> can_eval_guard e v)
+        | _ -> false
+      end
+  | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
+
 let rec eval env exp k = match exp with
   | EVar x ->
       begin match Env.find_opt x env with
@@ -94,69 +157,6 @@ let rec eval env exp k = match exp with
       eval env' e2 (fun v2 -> k v2)
   | ELetRec _ -> runtime_error "Recursive variable is not allowed in strict mode"
   | EMatchWith (e1, guards) ->
-      (* value -> pat -> env *)
-      let rec destruct_value_to_env v = function
-        | EVar x ->
-            if x = ignore_id then Env.empty
-            else Env.singleton x v
-        | EInt _
-        | EBool _
-        | ENil -> Env.empty
-        | EBinOp (Cons, hd, tl) ->
-            begin match v with
-              | VCons (vhd, vtl) ->
-                  let env_hd = destruct_value_to_env vhd hd in
-                  let env_tl = destruct_value_to_env vtl tl in
-                  Env.union (fun k a b -> Some a) env_hd env_tl
-              | _ -> runtime_error ("not a list: " ^ string_of_value v)
-            end
-        | ETuple es ->
-            begin match v with
-              | VTuple vs ->
-                if List.length es != List.length vs then
-                  runtime_error ("tuple size not match")
-                else
-                  List.combine vs es
-                  |> List.map (fun (v, e) -> destruct_value_to_env v e)
-                  |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
-              | _ -> runtime_error ("not a tuple: " ^ string_of_value v)
-            end
-        | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
-      in
-      let rec can_eval_guard p v = match p with
-        | EVar x -> true
-        | EInt i ->
-            begin match v with
-              | VInt i' -> i = i'
-              | _ -> false
-            end
-        | EBool b ->
-            begin match v with
-              | VBool b' -> b = b'
-              | _ -> false
-            end
-        | ENil ->
-            begin match v with
-              | VNil -> true
-              | _ -> false
-            end
-        | EBinOp (Cons, hd, tl) ->
-            begin match v with
-              | VCons (vhd, vtl) ->
-                  can_eval_guard hd vhd && can_eval_guard tl vtl
-              | _ -> false
-            end
-        | ETuple es ->
-            begin match v with
-              | VTuple vs ->
-                  if List.length es != List.length vs then false
-                  else
-                    List.combine es vs
-                    |> List.for_all (fun (e, v) -> can_eval_guard e v)
-              | _ -> false
-            end
-        | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
-      in
       eval env e1 (fun v1 ->
         match List.find_opt (fun (p, _) -> can_eval_guard p v1) guards with
           | Some (p, e) ->
