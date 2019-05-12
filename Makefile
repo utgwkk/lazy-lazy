@@ -1,4 +1,4 @@
-PACKS =
+PACKS = benchmark
 OCAMLYACC = menhir
 SRCDIR = src
 SOURCES = $(addprefix $(SRCDIR)/, \

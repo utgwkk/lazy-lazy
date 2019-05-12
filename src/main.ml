@@ -5,18 +5,21 @@ let benchmark = ref false
 let verbose = ref false
 let strict_eval = ref false
 
-let with_benchmark label f =
-  if !benchmark then
-    let start_time = Sys.time () in
-    let ret = f () in
-    let end_time = Sys.time () in
-    let dt = end_time -. start_time in
-    Printf.printf "%s : elapsed time = %.8f sec\n" label dt;
-    ret
-  else
-    f ()
-
 let if_verbose f = if !verbose then f ()
+
+let do_benchmark exp =
+  let iteration = 100000L in
+  [
+    Benchmark.latency1 iteration ~name:"type_inference" Infer.start exp;
+    (
+      if !strict_eval then
+        Benchmark.latency1 iteration ~name:"strict_evaluation" Eval.start exp
+      else
+        Benchmark.latency1 iteration ~name:"lazy_evaluation" LazyEval.start exp
+    );
+  ]
+  |> List.fold_left Benchmark.merge []
+  |> Benchmark.tabulate
 
 let rec repl prompt chan k =
   print_string prompt;
@@ -25,23 +28,17 @@ let rec repl prompt chan k =
   let exp = Parser.main Lexer.main (Lexing.from_channel chan) in
   if_verbose (fun () -> print_endline (string_of_exp exp));
 
-  let ty =
-    with_benchmark "type inference" (fun () -> Infer.start exp)
-  in
+  if !benchmark then do_benchmark exp;
+
+  let ty = Infer.start exp in
 
   let value_str =
-    begin
-      if !strict_eval then
-        let result =
-          with_benchmark "strict eval" (fun () -> Eval.start exp)
-        in
-        Eval.string_of_value result
-      else
-        let result =
-          with_benchmark "lazy eval" (fun () -> LazyEval.start exp)
-        in
-        LazyEval.string_of_value result
-    end
+    if !strict_eval then
+      let result = Eval.start exp in
+      Eval.string_of_value result
+    else
+      let result = LazyEval.start exp in
+      LazyEval.string_of_value result
   in
 
   (
