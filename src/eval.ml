@@ -166,8 +166,8 @@ let rec eval env exp k = match exp with
               fold_eval f (f a vh) et k
             )
       in
-      fold_eval (fun x y -> x @ [y]) [] es (fun vs ->
-        k (VTuple vs)
+      fold_eval (fun x y -> y :: x) [] es (fun vs ->
+        k (VTuple (List.rev vs))
       )
 
 let start exp =

@@ -215,8 +215,8 @@ let rec force t k =
                   fold_eval f (f a th) et k
                 )
           in
-          fold_eval (fun x y -> x @ [y]) [] es (fun ts ->
-            k (VTuple ts)
+          fold_eval (fun x y -> y :: x) [] es (fun ts ->
+            k (VTuple (List.rev ts))
           )
     end
   | Value v -> k v
