@@ -120,30 +120,30 @@ let rec force t k =
             )
           )
       | EMatchWith (e1, guards) ->
-          (* promise -> pat -> env *)
-          let rec destruct_promise_to_env p = function
+          (* thunk -> pat -> env *)
+          let rec destruct_thunk_to_env t = function
             | EVar x ->
                 if x = ignore_id then Env.empty
-                else Env.singleton x (ref p)
+                else Env.singleton x t
             | EInt _
             | EBool _
             | ENil -> Env.empty
             | EBinOp (Cons, hd, tl) ->
-                begin match p with
+                begin match !t with
                   | Value (VCons (thd, ttl)) ->
-                      let env_hd = destruct_promise_to_env !thd hd in
-                      let env_tl = destruct_promise_to_env !ttl tl in
+                      let env_hd = destruct_thunk_to_env thd hd in
+                      let env_tl = destruct_thunk_to_env ttl tl in
                       Env.union (fun k a b -> Some a) env_hd env_tl
                   | _ -> runtime_error ("not a list")
                 end
             | ETuple es ->
-                begin match p with
+                begin match !t with
                   | Value (VTuple ts) ->
                     if List.length es != List.length ts then
                       runtime_error ("tuple size not match")
                     else
                       List.combine ts es
-                      |> List.map (fun (t, e) -> destruct_promise_to_env !t e)
+                      |> List.map (fun (t, e) -> destruct_thunk_to_env t e)
                       |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
                   | _ -> runtime_error ("not a tuple")
                 end
@@ -195,7 +195,7 @@ let rec force t k =
               match List.find_opt (fun (p, _) -> can_eval_guard p t1) guards with
                 | Some (p, e) ->
                     let env' =
-                      destruct_promise_to_env !t1 p
+                      destruct_thunk_to_env t1 p
                       |> Env.union (fun k a b -> Some b) env
                     in
                     eval env' e (fun t ->
