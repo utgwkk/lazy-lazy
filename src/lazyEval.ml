@@ -16,6 +16,9 @@ and promise =
 
 and thunk = promise ref
 
+let make_value v = ref (Value v)
+let make_promise env e = ref (Promise (e, env))
+
 exception Error of string
 let runtime_error s = raise (Error s)
 
@@ -224,23 +227,23 @@ and eval env exp k = match exp with
         | Some t -> k t
         | None -> runtime_error ("Variable " ^ x ^ " is not bounded")
       end
-  | EInt i -> k (ref (Value (VInt i)))
-  | EBool b -> k (ref (Value (VBool b)))
-  | ENil -> k (ref (Value VNil))
+  | EInt i -> k (make_value (VInt i))
+  | EBool b -> k (make_value (VBool b))
+  | ENil -> k (make_value VNil)
   | EUndefined -> k (ref Exception)
   | EBinOp (op, e1, e2) ->
-      k (ref (Promise (EBinOp (op, e1, e2), env)))
+      k (make_promise env (EBinOp (op, e1, e2)))
   | EIfThenElse (e1, e2, e3) ->
-      k (ref (Promise (EIfThenElse (e1, e2, e3), env)))
+      k (make_promise env (EIfThenElse (e1, e2, e3)))
   | ELet (x, e1, e2) ->
       eval env e1 (fun t1 ->
         let env' = Env.add x t1 env in
         eval env' e2 (fun t2 -> k t2)
       )
   | EAbs (x, e) ->
-      k (ref (Value (VProc (x, e, env))))
+      k (make_value (VProc (x, e, env)))
   | EApp (e1, e2) ->
-      k (ref (Promise (EApp (e1, e2), env)))
+      k (make_promise env (EApp (e1, e2)))
   | ELetRec (f, e1, e2) ->
       let t = ref (Value (VInt 1)) in (* dummy *)
       let env' = Env.add f t env in
@@ -249,9 +252,9 @@ and eval env exp k = match exp with
         eval env' e2 (fun t2 -> k t2)
       )
   | EMatchWith (e1, guards) ->
-      k (ref (Promise (EMatchWith (e1, guards), env)))
+      k (make_promise env (EMatchWith (e1, guards)))
   | ETuple es ->
-      k (ref (Promise (ETuple es, env)))
+      k (make_promise env (ETuple es))
 
 let rec string_of_value = function
   | VInt i -> string_of_int i
