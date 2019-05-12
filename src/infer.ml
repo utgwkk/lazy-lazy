@@ -169,6 +169,9 @@ let rec infer tyenv = function
       let (s2, t2) = infer tyenv'' e2 in
       (s2, t2)
   | EMatchWith (e1, guards) ->
+      let reject_same_id k _ _ =
+        infer_failed ("the variable " ^ k ^ " occurs twice in pattern-match expression")
+      in
       (* ty -> exp -> eqs * tyenv *)
       let rec pattern t = function
         | EVar x ->
@@ -184,9 +187,7 @@ let rec infer tyenv = function
             let (eqs_hd, tyenv_hd) = pattern tv hd in
             let (eqs_tl, tyenv_tl) = pattern (TList tv) tl in
             let tyenv' =
-              Env.union (fun k _ _ ->
-                infer_failed ("the variable " ^ k ^ " occurs twice in pattern-match expression")
-              ) tyenv_hd tyenv_tl
+              Env.union reject_same_id tyenv_hd tyenv_tl
             in
             let eqs = merge_eqs [[(t, TList tv)]; eqs_hd; eqs_tl] in
             (eqs, tyenv')
@@ -196,9 +197,8 @@ let rec infer tyenv = function
                 let tv = TVar (fresh_tyvar ()) in
                 let (eqs', tyenv') = pattern tv e in
                 (
-                  merge_eqs [eqs; eqs'], Env.union (fun k _ _ ->
-                    infer_failed ("the variable " ^ k ^ " occurs twice in pattern-match expression")
-                  ) tyenv tyenv', tv :: tsr
+                  merge_eqs [eqs; eqs'],
+                  Env.union reject_same_id tyenv tyenv', tv :: tsr
                 )
               ) ([], Env.empty, []) es
             in
