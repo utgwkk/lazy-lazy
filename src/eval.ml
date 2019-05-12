@@ -15,12 +15,20 @@ let rec string_of_value = function
   | VProc _ -> "<fun>"
   | VNil -> "[]"
   | VCons (v1, v2) ->
-      begin match v1 with
-        | VCons _ ->
-            Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
-        | _ ->
-            Printf.sprintf "%s :: %s" (string_of_value v1) (string_of_value v2)
-      end
+      let rec string_of_list_body = function
+        | VNil -> ""
+        | VCons (v1, v2) ->
+            let s1 = string_of_value v1 in
+            begin match v2 with
+              | VNil -> s1
+              | VCons _ ->
+                  let s2 = string_of_list_body v2 in
+                  s1 ^ "; " ^ s2
+              | v -> failwith ("invalid list: " ^ string_of_value v)
+            end
+        | v -> failwith ("invalid list: " ^ string_of_value v)
+      in
+      Printf.sprintf "[%s]" (string_of_list_body (VCons (v1, v2)))
   | VTuple vs ->
       vs
       |> List.map string_of_value
