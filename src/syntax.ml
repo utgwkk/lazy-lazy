@@ -141,7 +141,6 @@ let pp_ty ty =
   let tv_map =
     tvs ty
     |> TV.elements
-    |> List.rev
     |> List.mapi (fun i tv -> (tv, i + 1))
   in
   let rec string_of_ty = function
