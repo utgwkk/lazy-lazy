@@ -28,25 +28,33 @@ let rec repl prompt chan k =
 
   if !benchmark then do_benchmark exp;
 
-  let ty = Infer.start exp in
+  try
+    Sys.catch_break true;
+    let ty = Infer.start exp in
 
-  let value_str =
-    if !strict_eval then
-      let result = Eval.start exp in
-      Eval.string_of_value result
-    else
-      let result = LazyEval.start exp in
-      LazyEval.string_of_value result
-  in
+    let value_str =
+      if !strict_eval then
+        let result = Eval.start exp in
+        Eval.string_of_value result
+      else
+        let result = LazyEval.start exp in
+        LazyEval.string_of_value result
+    in
 
-  (
-    if value_str = "undefined" then
-      print_endline "Exception: undefined"
-    else
-      Printf.printf "- : %s = %s\n" (pp_ty ty) value_str
-  );
+    (
+      if value_str = "undefined" then
+        print_endline "Exception: undefined"
+      else
+        Printf.printf "- : %s = %s\n" (pp_ty ty) value_str
+    );
+    Sys.catch_break false;
+    k ()
+  with
+    Sys.Break ->
+      print_endline "Interrupted.";
+      Sys.catch_break false;
+      k ()
 
-  k ()
 
 let main () =
   let usage = Printf.sprintf "%s [--use-strict] [-v] [filename]" Sys.argv.(0) in
