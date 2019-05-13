@@ -13,7 +13,7 @@ let do_benchmark exp =
     Benchmark.latency1 iteration ~name:"type_inference" Infer.start exp;
     (
       if !strict_eval then
-        Benchmark.latency1 iteration ~name:"strict_evaluation" Eval.start exp
+        Benchmark.latency1 iteration ~name:"strict_evaluation" StrictEval.start exp
       else
         Benchmark.latency1 iteration ~name:"lazy_evaluation" LazyEval.start exp
     );
@@ -34,8 +34,8 @@ let rec repl prompt chan k =
 
     let value_str =
       if !strict_eval then
-        let result = Eval.start exp in
-        Eval.string_of_value result
+        let result = StrictEval.start exp in
+        StrictEval.string_of_value result
       else
         let result = LazyEval.start exp in
         LazyEval.string_of_value result
