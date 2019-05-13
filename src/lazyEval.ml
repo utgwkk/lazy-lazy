@@ -28,6 +28,8 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | (Lt, VInt i1, VInt i2) -> k (VBool (i1 < i2))
   | _ -> runtime_error "binop"
 
+let newer _ _ b = Some b
+
 (* thunk -> pat -> env *)
 let rec destruct_thunk_to_env t = function
   | EVar x ->
@@ -41,7 +43,7 @@ let rec destruct_thunk_to_env t = function
         | Value (VCons (thd, ttl)) ->
             let env_hd = destruct_thunk_to_env thd hd in
             let env_tl = destruct_thunk_to_env ttl tl in
-            Env.union (fun k a b -> Some a) env_hd env_tl
+            Env.union newer env_hd env_tl
         | _ -> runtime_error ("not a list")
       end
   | ETuple es ->
@@ -52,7 +54,7 @@ let rec destruct_thunk_to_env t = function
           else
             List.combine ts es
             |> List.map (fun (t, e) -> destruct_thunk_to_env t e)
-            |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
+            |> List.fold_left (Env.union newer) Env.empty
         | _ -> runtime_error ("not a tuple")
       end
   | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
@@ -159,7 +161,7 @@ let rec force t k =
                 | Some (p, e) ->
                     let env' =
                       destruct_thunk_to_env t1 p
-                      |> Env.union (fun k a b -> Some b) env
+                      |> Env.union newer env
                     in
                     eval env' e (fun t ->
                       force t (fun v ->

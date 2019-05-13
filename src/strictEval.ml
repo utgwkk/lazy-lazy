@@ -46,6 +46,8 @@ let eval_binop op v1 v2 k = match (op, v1, v2) with
   | (Cons, v1, v2) -> k (VCons (v1, v2))
   | _ -> runtime_error "binop"
 
+let newer _ _ b = Some b
+
 (* value -> pat -> env *)
 let rec destruct_value_to_env v = function
   | EVar x ->
@@ -59,7 +61,7 @@ let rec destruct_value_to_env v = function
         | VCons (vhd, vtl) ->
             let env_hd = destruct_value_to_env vhd hd in
             let env_tl = destruct_value_to_env vtl tl in
-            Env.union (fun k a b -> Some a) env_hd env_tl
+            Env.union newer env_hd env_tl
         | _ -> runtime_error ("not a list: " ^ string_of_value v)
       end
   | ETuple es ->
@@ -70,7 +72,7 @@ let rec destruct_value_to_env v = function
           else
             List.combine vs es
             |> List.map (fun (v, e) -> destruct_value_to_env v e)
-            |> List.fold_left (Env.union (fun k a b -> Some b)) Env.empty
+            |> List.fold_left (Env.union newer) Env.empty
         | _ -> runtime_error ("not a tuple: " ^ string_of_value v)
       end
   | p -> runtime_error ("invalid pattern: " ^ string_of_exp p)
@@ -162,7 +164,7 @@ let rec eval env exp k = match exp with
           | Some (p, e) ->
               let env' =
                 destruct_value_to_env v1 p
-                |> Env.union (fun k a b -> Some b) env
+                |> Env.union newer env
               in eval env' e (fun v2 -> k v2)
           | None -> runtime_error "match failure"
       )
