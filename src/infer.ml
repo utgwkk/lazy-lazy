@@ -23,7 +23,7 @@ let subst_eqs s eqs =
 let eqs_of_subst subs =
   List.map (fun (tv, t) -> (TVar tv, t)) subs
 
-(* (ty * ty) list list -> (ty * ty) lis t*)
+(* (ty * ty) list list -> (ty * ty) list *)
 let merge_eqs eqs =
   List.fold_left List.rev_append [] eqs
 
