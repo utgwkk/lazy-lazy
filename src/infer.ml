@@ -63,7 +63,11 @@ let rec unify = function
               (tv, t) :: unify tl'
         | t, TVar tv ->
             unify ((TVar tv, t) :: tl)
-        | _ -> unify_failed "Type mismatch"
+        | _ ->
+            let error_msg =
+              Printf.sprintf "%s is not compatible with %s" (string_of_ty t1) (string_of_ty t2)
+            in
+            unify_failed error_msg
 
 let fresh_tyvar =
   let counter = ref 0 in
