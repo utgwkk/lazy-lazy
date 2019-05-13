@@ -57,7 +57,7 @@ let rec repl prompt chan k =
 
 
 let main () =
-  let usage = Printf.sprintf "%s [--use-strict] [-v] [filename]" Sys.argv.(0) in
+  let usage = Printf.sprintf "%s [--benchmark] [--use-strict] [-v] [filename]" Sys.argv.(0) in
   let arg = Arg.align [
     ("--benchmark", Arg.Set benchmark, "Do a benchmark.");
     ("-v", Arg.Set verbose, "Verbose mode.");
