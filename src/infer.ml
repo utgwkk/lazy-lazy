@@ -57,15 +57,20 @@ let rec unify = function
               unify eqs'
         | TVar tv, t ->
             if occurs tv t then
-              unify_failed ("Type variable " ^ string_of_int tv ^ " occurs.")
+              let tv_map = make_tv_map (TFun (t1, t2)) in
+              let error_msg =
+                Printf.sprintf "Type variable %s occurs inside %s." (pp_ty_impl tv_map t1) (pp_ty_impl tv_map t2)
+              in
+              unify_failed error_msg
             else
               let tl' = subst_eqs [(tv, t)] tl in
               (tv, t) :: unify tl'
         | t, TVar tv ->
             unify ((TVar tv, t) :: tl)
         | _ ->
+            let tv_map = make_tv_map (TFun (t1, t2)) in
             let error_msg =
-              Printf.sprintf "%s is not compatible with %s" (string_of_ty t1) (string_of_ty t2)
+              Printf.sprintf "%s is not compatible with %s" (pp_ty_impl tv_map t1) (pp_ty_impl tv_map t2)
             in
             unify_failed error_msg
 

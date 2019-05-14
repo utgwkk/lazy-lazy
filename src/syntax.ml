@@ -127,7 +127,7 @@ let rec string_of_ty = function
         )
       |> String.concat " * "
 
-let pp_ty ty =
+let make_tv_map ty =
   let rec tvs = function
     | TInt
     | TBool -> TV.empty
@@ -138,11 +138,11 @@ let pp_ty ty =
         List.map tvs ts
         |> List.fold_left TV.union TV.empty
   in
-  let tv_map =
-    tvs ty
-    |> TV.elements
-    |> List.mapi (fun i tv -> (tv, i + 1))
-  in
+  tvs ty
+  |> TV.elements
+  |> List.mapi (fun i tv -> (tv, i + 1))
+
+let pp_ty_impl tv_map ty =
   let rec string_of_ty = function
     | TInt -> "int"
     | TBool -> "bool"
@@ -164,3 +164,7 @@ let pp_ty ty =
           )
         |> String.concat " * "
   in string_of_ty ty
+
+let pp_ty ty =
+  let tv_map = make_tv_map ty in
+  pp_ty_impl tv_map ty
