@@ -1,20 +1,20 @@
-PACKS = benchmark
-OCAMLYACC = menhir
-SRCDIR = src
-SOURCES = $(addprefix $(SRCDIR)/, \
-					syntax.ml \
-					frontend/parser.mly \
-					frontend/lexer.mll \
-					infer.ml \
-					strictEval.ml \
-					lazyEval.ml \
-					) \
-					$(MAIN)
-MAIN = $(SRCDIR)/main.ml
-RESULT = lazy-lazy
+.PHONY: all clean byte native
+
+OCB_FLAGS = -use-ocamlfind -I src -I src/frontend
+OCB = ocamlbuild $(OCB_FLAGS)
 
 all: frontend
 
-frontend: bc
+frontend: native
 
-include OCamlMakefile
+native: sanity
+	$(OCB) main.native
+
+byte: sanity
+	$(OCB) main.byte
+
+clean:
+	$(OCB) -clean
+
+sanity:
+	ocamlfind query benchmark

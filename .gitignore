@@ -21,11 +21,3 @@ setup.log
 
 # Merlin configuring file for Vim and Emacs
 .merlin
-
-._d/
-._bcdi/
-._ncdi/
-lazy-lazy
-lexer.ml
-parser.ml
-parser.mli

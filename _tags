@@ -1,0 +1,2 @@
+true: package(benchmark)
+true: use_menhir
