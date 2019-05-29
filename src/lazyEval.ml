@@ -4,6 +4,7 @@ type value =
   | VInt of int
   | VBool of bool
   | VProc of id * exp * thunk Env.t
+  | VUnit
   | VNil
   | VCons of thunk * thunk
   | VUndefined
@@ -37,6 +38,7 @@ let rec destruct_thunk_to_env t = function
       else Env.singleton x t
   | EInt _
   | EBool _
+  | EUnit
   | ENil -> Env.empty
   | EBinOp (Cons, hd, tl) ->
       begin match !t with
@@ -75,6 +77,7 @@ let rec force t k =
       | EInt i -> k (VInt i)
       | EBool b -> k (VBool b)
       | ENil -> k VNil
+      | EUnit -> k VUnit
       | EUndefined -> VUndefined
       | EBinOp (op, e1, e2) ->
           eval env e1 (fun t1 ->
@@ -201,6 +204,12 @@ and can_eval_guard p t = match p with
         | VBool b' -> b = b'
         | _ -> false
       end
+  | EUnit ->
+      let v = force t (fun v -> t := Value v; v) in
+      begin match v with
+        | VUnit -> true
+        | _ -> false
+      end
   | ENil ->
       let v = force t (fun v -> t := Value v; v) in
       v = VNil
@@ -231,6 +240,7 @@ and eval env exp k = match exp with
       end
   | EInt i -> k (make_value (VInt i))
   | EBool b -> k (make_value (VBool b))
+  | EUnit -> k (make_value VUnit)
   | ENil -> k (make_value VNil)
   | EUndefined -> k (ref Exception)
   | EBinOp (op, e1, e2) ->
@@ -262,6 +272,7 @@ let rec string_of_value = function
   | VInt i -> string_of_int i
   | VBool b -> string_of_bool b
   | VProc _ -> "<fun>"
+  | VUnit -> "()"
   | VNil -> "[]"
   | VCons (t1, t2) ->
       let rec string_of_list_body = function

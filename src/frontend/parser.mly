@@ -84,6 +84,7 @@ Expr :
       EMatchWith (e, gs)
     }
   | bioper_fun { $1 }
+  | LPAREN RPAREN { EUnit }
   | LPAREN Expr RPAREN { $2 }
 
 bioper_fun :
@@ -116,6 +117,7 @@ pattern :
   | list_pattern { $1 }
   | tuple_pattern { $1 }
   | hd=pattern CONS tl=pattern { EBinOp (Cons, hd, tl) }
+  | LPAREN RPAREN { EUnit }
   | LPAREN pattern RPAREN { $2 }
 
 list_pattern :

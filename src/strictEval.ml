@@ -4,6 +4,7 @@ type value =
   | VInt of int
   | VBool of bool
   | VProc of id * exp * value Env.t ref
+  | VUnit
   | VNil
   | VCons of value * value
   | VTuple of value list
@@ -13,6 +14,7 @@ let rec string_of_value = function
   | VInt i -> string_of_int i
   | VBool b -> string_of_bool b
   | VProc _ -> "<fun>"
+  | VUnit -> "()"
   | VNil -> "[]"
   | VCons (v1, v2) ->
       let rec string_of_list_body = function
@@ -55,6 +57,7 @@ let rec destruct_value_to_env v = function
       else Env.singleton x v
   | EInt _
   | EBool _
+  | EUnit
   | ENil -> Env.empty
   | EBinOp (Cons, hd, tl) ->
       begin match v with
@@ -89,6 +92,11 @@ let rec can_eval_guard p v = match p with
         | VBool b' -> b = b'
         | _ -> false
       end
+  | EUnit ->
+      begin match v with
+        | VUnit -> true
+        | _ -> false
+      end
   | ENil ->
       begin match v with
         | VNil -> true
@@ -119,6 +127,7 @@ let rec eval env exp k = match exp with
       end
   | EInt i -> k (VInt i)
   | EBool b -> k (VBool b)
+  | EUnit -> k VUnit
   | ENil -> k VNil
   | EUndefined -> VUndefined
   | EBinOp (op, e1, e2) ->

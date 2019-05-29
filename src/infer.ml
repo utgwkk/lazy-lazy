@@ -6,6 +6,7 @@ let subst_ty subs t =
   let rec subst_ty (tv, t) = function
     | TInt -> TInt
     | TBool -> TBool
+    | TUnit -> TUnit
     | TVar tv' ->
         if tv = tv' then t
         else TVar tv'
@@ -29,7 +30,8 @@ let merge_eqs eqs =
 
 let rec occurs tv = function
   | TInt
-  | TBool -> false
+  | TBool
+  | TUnit -> false
   | TVar tv' -> tv = tv'
   | TFun (t1, t2) ->
       occurs tv t1 || occurs tv t2
@@ -114,6 +116,9 @@ let rec pattern t = function
   | EBool _ ->
       let s = unify [(t, TBool)] in
       (s, Env.empty)
+  | EUnit ->
+      let s = unify [(t, TUnit)] in
+      (s, Env.empty)
   | ENil ->
       let tv = TVar (fresh_tyvar ()) in
       let s = unify [(t, TList tv)] in
@@ -167,6 +172,7 @@ let rec infer tyenv = function
       end
   | EInt _ -> ([], TInt)
   | EBool _ -> ([], TBool)
+  | EUnit -> ([], TUnit)
   | ENil ->
       let tv = fresh_tyvar () in
       ([], TList (TVar tv))

@@ -12,6 +12,7 @@ type exp =
   | EVar of id
   | EInt of int
   | EBool of bool
+  | EUnit
   | ENil
   | EUndefined
   | EBinOp of op * exp * exp
@@ -28,6 +29,7 @@ type tyvar = int
 type ty =
   | TInt
   | TBool
+  | TUnit
   | TVar of tyvar
   | TFun of ty * ty
   | TList of ty
@@ -45,7 +47,8 @@ module TV = Set.Make(
 
 let rec ftv = function
   | TInt
-  | TBool -> TV.empty
+  | TBool
+  | TUnit -> TV.empty
   | TVar tv -> TV.singleton tv
   | TFun (t1, t2) -> TV.union (ftv t1) (ftv t2)
   | TList t -> ftv t
@@ -69,6 +72,7 @@ let rec string_of_exp = function
   | EVar x -> x
   | EInt i -> string_of_int i
   | EBool b -> string_of_bool b
+  | EUnit -> "()"
   | ENil -> "()"
   | EUndefined -> "undefined"
   | EBinOp (op, e1, e2) ->
@@ -101,6 +105,7 @@ let rec string_of_exp = function
 let large_ty = function
   | TInt
   | TBool
+  | TUnit
   | TVar _
   | TList _ -> false
   | TFun _ -> true
@@ -109,6 +114,7 @@ let large_ty = function
 let rec string_of_ty = function
   | TInt -> "int"
   | TBool -> "bool"
+  | TUnit -> "unit"
   | TVar tv -> "'t" ^ string_of_int tv
   | TFun (t1, t2) ->
       if large_ty t1 then
@@ -130,7 +136,8 @@ let rec string_of_ty = function
 let make_tv_map ty =
   let rec tvs = function
     | TInt
-    | TBool -> TV.empty
+    | TBool
+    | TUnit -> TV.empty
     | TVar tv -> TV.singleton tv
     | TFun (t1, t2) -> TV.union (tvs t1) (tvs t2)
     | TList t -> tvs t
@@ -146,6 +153,7 @@ let pp_ty_impl tv_map ty =
   let rec string_of_ty = function
     | TInt -> "int"
     | TBool -> "bool"
+    | TUnit -> "unit"
     | TVar tv -> "'t" ^ string_of_int (List.assoc tv tv_map)
     | TFun (t1, t2) ->
         if large_ty t1 then
