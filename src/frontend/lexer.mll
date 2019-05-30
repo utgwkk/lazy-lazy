@@ -24,7 +24,7 @@ let number = digit+
 let ident = '_' | small (capital | small | digit | ['_' '\''])*
 
 rule main = parse
-  | [' ' '\009' '\012' '\n']+     { main lexbuf }
+  | [' ' '\009' '\012' '\r' '\t' '\n']+ { main lexbuf }
   | "-"? number { INTV (int_of_string (Lexing.lexeme lexbuf)) }
   | "(" { LPAREN }
   | ")" { RPAREN }
@@ -50,6 +50,7 @@ rule main = parse
     }
   | "(*" { comment 0 lexbuf }
 	| eof { exit 0 }
+  | _ as x { failwith ("unknown char: " ^ (String.make 1 x))}
 
 and comment nest = parse
   | "*)" {
