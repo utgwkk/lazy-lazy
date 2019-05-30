@@ -3,11 +3,12 @@ ML interpreter with lazy evaluation
 
 ## Requirements
 
+- ocamlbuild
 - menhir
 - benchmark
 
 To install them with opam, run:
 
 ```
-$ opam install menhir benchmark
+$ opam install ocamlbuild menhir benchmark
 ```
