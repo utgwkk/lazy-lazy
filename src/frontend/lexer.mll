@@ -24,7 +24,12 @@ let number = digit+
 let ident = '_' | small (capital | small | digit | ['_' '\''])*
 
 rule main = parse
-  | [' ' '\009' '\012' '\r' '\t' '\n']+ { main lexbuf }
+  | [' ' '\009' '\012' '\t']+ { main lexbuf }
+  | ['\r' '\n']
+    {
+      Lexing.new_line lexbuf;
+      main lexbuf
+    }
   | "-"? number { INTV (int_of_string (Lexing.lexeme lexbuf)) }
   | "(" { LPAREN }
   | ")" { RPAREN }
@@ -50,7 +55,14 @@ rule main = parse
     }
   | "(*" { comment 0 lexbuf }
 	| eof { exit 0 }
-  | _ as x { failwith ("unknown char: " ^ (String.make 1 x))}
+  | _ as x
+    {
+      let pos = Lexing.lexeme_start_p lexbuf in
+      let line = pos.pos_lnum in
+      let column = pos.pos_cnum - pos.pos_bol in
+      let msg = Printf.sprintf "unknown char '%c' at line %d, column %d." x line column in
+      failwith msg
+    }
 
 and comment nest = parse
   | "*)" {
